@@ -25,7 +25,9 @@ class OpenAICompatLLM:
             "messages": [{"role": m.role, "content": m.content} for m in messages],
         }
 
-    async def generate(self, messages: list[ChatMessage], *, temperature: float = 0.0, max_tokens: int = 900) -> LlmResult:
+    async def generate(
+        self, messages: list[ChatMessage], *, temperature: float = 0.0, max_tokens: int = 900, effort: str | None = None
+    ) -> LlmResult:
         last: Exception | None = None
         for attempt in range(self._attempts):
             try:

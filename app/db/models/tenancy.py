@@ -32,7 +32,6 @@ class User(Base, TimestampMixin):
     mfa_secret_enc: Mapped[bytes | None] = mapped_column(LargeBinary)
     locale: Mapped[str] = mapped_column(String(8), default="en")
     platform_role: Mapped[str | None] = mapped_column(String(32))  # platform_admin | platform_support
-    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # set when the user proves control of the address
     phone_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     mfa_totp_enabled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # secret in mfa_secret_enc is pending until set
     mfa_totp_last_step: Mapped[int] = mapped_column(BigInteger, default=0)  # RFC 6238 §5.2: a time step can be used only once

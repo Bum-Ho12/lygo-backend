@@ -28,7 +28,8 @@ class InviteOut(BaseModel):
     email: str
     role: str
     client_id: uuid.UUID | None = None
-    email_sent: bool = True  # False => created but not delivered; use POST .../resend once email is fixed
+    email_sent: bool = True  # False => not delivered by email
+    invite_link: str | None = None  # only present when email_sent is false: give it to the invitee through a channel you trust
 
 
 class MemberPatch(BaseModel):
@@ -48,8 +49,8 @@ async def invite_member(
     ctx: Annotated[TenantContext, Depends(require("members.manage"))],
 ) -> InviteOut:
     firm = await db.get(Firm, ctx.firm_id)
-    inv, sent = await service.create_invitation(db, ctx, email, to=body.email, role=body.role, firm_name=firm.name if firm else "")
-    return InviteOut(id=inv.id, email=inv.email, role=inv.role, email_sent=sent)
+    r = await service.create_invitation(db, ctx, email, to=body.email, role=body.role, firm_name=firm.name if firm else "")
+    return InviteOut(id=r.invitation.id, email=r.invitation.email, role=r.invitation.role, email_sent=r.emailed, invite_link=None if r.emailed else r.link)
 
 
 @router.get("/invitations")
@@ -64,8 +65,9 @@ async def resend_invitation(
     invitation_id: uuid.UUID, db: Db, email: Annotated[EmailSender, Depends(get_email_sender)], ctx: Annotated[TenantContext, Depends(require("members.manage"))]
 ) -> InviteOut:
     firm = await db.get(Firm, ctx.firm_id)
-    inv, sent = await service.resend_invitation(db, ctx, email, invitation_id, firm_name=firm.name if firm else "")
-    return InviteOut(id=inv.id, email=inv.email, role=inv.role, client_id=inv.client_id, email_sent=sent)
+    r = await service.resend_invitation(db, ctx, email, invitation_id, firm_name=firm.name if firm else "")
+    inv = r.invitation
+    return InviteOut(id=inv.id, email=inv.email, role=inv.role, client_id=inv.client_id, email_sent=r.emailed, invite_link=None if r.emailed else r.link)
 
 
 @router.patch("/members/{user_id}")
