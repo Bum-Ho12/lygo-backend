@@ -36,5 +36,7 @@ async def firm_member(api: AsyncClient, pg: PgConfig, firm: uuid.UUID, role: str
 
 
 def token_from(outbox, to: str) -> str:  # type: ignore[no-untyped-def]
+    import re
+
     msg = [m for m in outbox.sent if m.to == to][-1]
-    return msg.body.rsplit(": ", 1)[1].strip()
+    return re.search(r"[?&]token=([A-Za-z0-9_\-]+)", msg.body).group(1)  # type: ignore[union-attr]

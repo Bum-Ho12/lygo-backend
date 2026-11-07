@@ -122,3 +122,111 @@ async def test_openai_embedder_failures() -> None:
         await _openai(lambda r: httpx.Response(200, json={"data": [{"index": 0, "embedding": [1, 2]}]})).embed(["x"])
     with pytest.raises(EmbeddingError, match="malformed"):
         await _openai(lambda r: httpx.Response(200, json={"oops": 1})).embed(["x"])
+
+
+# --- Voyage ----------------------------------------------------------------------------------------------------------------
+def _voyage(handler, dim=4, **kw):  # type: ignore[no-untyped-def]
+    from app.engine.rag.embeddings.voyage import VoyageEmbedder
+
+    sleeps: list[float] = []
+
+    async def nosleep(s: float) -> None:
+        sleeps.append(s)
+
+    client = httpx.AsyncClient(base_url="https://api.voyageai.com/v1", transport=httpx.MockTransport(handler))
+    e = VoyageEmbedder("pa-test-key", "voyage-law-2", dim, client=client, sleep=nosleep, **kw)
+    e.sleeps = sleeps  # type: ignore[attr-defined]
+    return e
+
+
+def _voyage_ok(req: httpx.Request) -> httpx.Response:
+    import json
+
+    body = json.loads(req.read())
+    data = [{"object": "embedding", "index": i, "embedding": [float(len(t)), 0.0, 0.0, 1.0]} for i, t in enumerate(body["input"])]
+    return httpx.Response(200, json={"object": "list", "data": list(reversed(data)), "model": body["model"], "usage": {"total_tokens": 7 * len(data)}})
+
+
+async def test_voyage_uses_document_and_query_input_types_and_auth() -> None:
+    import json
+
+    seen = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen.append((str(req.url), req.headers["authorization"], json.loads(req.read())))
+        return _voyage_ok(req)
+
+    e = _voyage(handler)
+    docs = await e.embed(["alpha", "bb"])
+    q = await e.embed_query("what is notice?")
+    assert [v[0] for v in docs] == [5.0, 2.0] and q[0] == 15.0  # out-of-order response restored to input order
+    assert seen[0][0] == "https://api.voyageai.com/v1/embeddings" and seen[0][1] == "Bearer pa-test-key"
+    assert (seen[0][2]["input_type"], seen[0][2]["model"], seen[0][2]["truncation"]) == ("document", "voyage-law-2", True)
+    assert seen[1][2]["input_type"] == "query" and seen[1][2]["input"] == ["what is notice?"]
+    assert e.total_tokens == 21  # usage is tracked for cost visibility
+
+
+async def test_voyage_batches_by_item_count_and_token_budget() -> None:
+    sizes = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        import json
+
+        sizes.append(len(json.loads(req.read())["input"]))
+        return _voyage_ok(req)
+
+    e = _voyage(handler)
+    assert len(await e.embed([f"t{i}" for i in range(300)])) == 300 and sizes == [128, 128, 44]  # <= 128 items per call
+    sizes.clear()
+    big = "x" * 120_000  # ~30K tokens, but the API truncates at the 16K context, so each counts as 16K => three per 60K batch
+    out = await e.embed([big] * 5)
+    assert len(out) == 5 and sizes == [3, 2]
+    assert [len(b) for b in e._batches([])] == []
+
+
+async def test_voyage_retries_rate_limits_with_backoff_then_gives_up() -> None:
+    n = {"c": 0}
+
+    def flaky(req: httpx.Request) -> httpx.Response:
+        n["c"] += 1
+        return httpx.Response(429, json={"detail": "rate limit"}) if n["c"] < 3 else _voyage_ok(req)
+
+    e = _voyage(flaky)
+    assert (await e.embed(["x"]))[0][0] == 1.0 and n["c"] == 3 and len(e.sleeps) == 2 and e.sleeps[1] >= e.sleeps[0] / 2
+    always = _voyage(lambda r: httpx.Response(429, json={"detail": "slow down"}), max_attempts=3)
+    with pytest.raises(EmbeddingError, match="3 attempts"):
+        await always.embed(["x"])
+
+
+async def test_voyage_error_handling() -> None:
+    calls = {"c": 0}
+
+    def bad_key(req: httpx.Request) -> httpx.Response:
+        calls["c"] += 1
+        return httpx.Response(401, json={"detail": "Provided API key is invalid."})
+
+    with pytest.raises(EmbeddingError, match="API key") as info:
+        await _voyage(bad_key).embed(["x"])
+    assert calls["c"] == 1 and "pa-test-key" not in str(info.value)  # not retried, key never echoed
+    with pytest.raises(EmbeddingError, match="rejected the request"):
+        await _voyage(lambda r: httpx.Response(400, json={"detail": "input too long"})).embed(["x"])
+    with pytest.raises(EmbeddingError, match="unexpected shape"):  # e.g. configured for 1024 but the model returns 512
+        await _voyage(_voyage_ok, dim=1024).embed(["x"])
+    with pytest.raises(EmbeddingError, match="malformed"):
+        await _voyage(lambda r: httpx.Response(200, json={"oops": 1})).embed(["x"])
+    with pytest.raises(EmbeddingError, match="not set"):
+        from app.engine.rag.embeddings.voyage import VoyageEmbedder
+
+        VoyageEmbedder("")
+
+
+def test_factory_prefers_voyage(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.core.config import settings
+    from app.engine.rag.embeddings.factory import get_embedder
+    from app.engine.rag.embeddings.voyage import VoyageEmbedder
+
+    monkeypatch.setattr(settings, "voyage_api_key", "pa-x")
+    monkeypatch.setattr(settings, "embedding_model", "other")
+    monkeypatch.setattr(settings, "llm_base_url", "https://llm.example")
+    e = get_embedder()
+    assert isinstance(e, VoyageEmbedder) and (e.model, e.dim) == ("voyage-law-2", 1024)

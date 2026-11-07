@@ -48,10 +48,20 @@ class Settings(BaseSettings):
     rag_min_similarity: float = 0.25  # abstain unless a lexical match exists or the best vector similarity reaches this
     llm_base_url: str = ""
     llm_api_key: str = ""
+    voyage_api_key: str = ""
+    voyage_model: str = "voyage-law-2"  # legal retrieval; 1024 dims, matching the chunks.embedding column
     embedding_model: str = ""
     embedding_dim: int = 1024  # fixed in the chunks migration (vector(1024)); changing it requires a re-index migration
     embed_batch_size: int = 64
 
+    frontend_base_url: str = "http://localhost:3000"  # where emailed links point (accept-invite, reset-password)
+    smtp_host: str = ""  # empty => no outbound email (console logger in local, fail closed elsewhere)
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_security: str = "starttls"  # starttls | tls (implicit) | none (local test servers only)
+    email_from: str = "no-reply@lygo.local"
+    email_from_name: str = "Lygo"
     api_base_url: str = ""  # public URL of this API; used to build SMS delivery-report callbacks
     sms_max_segments: int = 3
     sms_monthly_quota: int = 500  # per firm; Thrivewave has no balance API so metering is ours

@@ -90,7 +90,7 @@ async def search(
     scopes = set(scopes) & SCOPES
     if not scopes:
         return []
-    (qv,) = await embedder.embed([query])
+    qv = await embedder.embed_query(query)
     params = {"scopes": sorted(scopes), "matter_id": matter_id, "as_at": as_at or date.today(), "k": CANDIDATES}
     # pgvector >= 0.8: keep scanning the HNSW index when RLS/filters discard candidates (harmless placeholder GUC on older versions)
     await db.execute(text("SELECT set_config('hnsw.iterative_scan', 'relaxed_order', true)"))

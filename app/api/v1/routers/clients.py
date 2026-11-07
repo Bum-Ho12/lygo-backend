@@ -93,10 +93,10 @@ async def archive_client(client_id: uuid.UUID, db: Db, ctx: Manage) -> None:
 async def invite_portal_user(
     client_id: uuid.UUID, body: PortalInviteIn, db: Db, ctx: Manage,
     email: Annotated[EmailSender, Depends(get_email_sender)],
-) -> dict[str, str]:
+) -> dict[str, str | bool]:
     await get_or_404(db, Client, client_id, "client")
     firm = await db.get(Firm, ctx.firm_id)
-    inv = await firm_service.create_invitation(
+    inv, sent = await firm_service.create_invitation(
         db, ctx, email, to=body.email, role=body.role, client_id=client_id, firm_name=firm.name if firm else ""
     )
-    return {"id": str(inv.id), "email": inv.email, "role": inv.role}
+    return {"id": str(inv.id), "email": inv.email, "role": inv.role, "email_sent": sent}

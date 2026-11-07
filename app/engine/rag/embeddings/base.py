@@ -12,10 +12,14 @@ class EmbeddingError(Exception): ...
 
 
 class Embedder(Protocol):
+    """`embed` is for passages being indexed; `embed_query` is for search queries. Retrieval models such as Voyage embed the two
+    differently (asymmetric retrieval), so the call site must say which it is."""
+
     model: str
     dim: int
 
     async def embed(self, texts: list[str]) -> list[list[float]]: ...
+    async def embed_query(self, text: str) -> list[float]: ...
 
 
 _WORD = re.compile(r"[a-z0-9]+")
@@ -45,3 +49,6 @@ class HashingEmbedder:
 
     async def embed(self, texts: list[str]) -> list[list[float]]:
         return [self._vec(t) for t in texts]
+
+    async def embed_query(self, text: str) -> list[float]:
+        return self._vec(text)

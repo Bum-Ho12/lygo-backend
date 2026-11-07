@@ -18,7 +18,7 @@ from app.domain.firms import service
 from app.engine.rag.corpus import CorpusManifest, LicenceNotConfirmed, load_corpus_document
 from app.engine.rag.embeddings.base import Embedder
 from app.engine.rag.embeddings.factory import get_embedder
-from app.integrations.email.base import EmailMessage, EmailSender, get_email_sender
+from app.integrations.email.base import EmailSender, get_email_sender
 
 router = APIRouter(prefix="/platform", tags=["platform"])
 
@@ -50,7 +50,7 @@ async def list_firms(ctx: Platform, factory: Factory) -> dict[str, list[dict[str
 @router.post("/firms", status_code=201)
 async def create_firm(
     body: FirmCreate, ctx: Platform, factory: Factory, email: Annotated[EmailSender, Depends(get_email_sender)]
-) -> dict[str, str]:
+) -> dict[str, str | bool]:
     """Create a firm and invite its first owner. Platform staff get no access to firm content."""
     if not has_permission(ctx.role, "platform.manage"):
         raise Forbidden("Only platform admins can create firms.")
@@ -68,11 +68,8 @@ async def create_firm(
             )
         )
         firm_id = firm.id
-    await email.send(EmailMessage(
-        to=str(body.owner_email), subject=f"Your Lygo firm '{body.name}' is ready",
-        body=f"Accept your owner invitation with this code (valid 7 days): {token}",
-    ))
-    return {"id": str(firm_id), "slug": body.slug}
+    sent = await service.send_invitation_email(email, str(body.owner_email), body.name, token)
+    return {"id": str(firm_id), "slug": body.slug, "owner_invitation_emailed": sent}
 
 
 
