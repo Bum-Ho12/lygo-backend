@@ -1,0 +1,1039 @@
+{
+  "generated_for": "Lygo ingestion / OCR / RAG / tenancy testing",
+  "warning": "All documents are synthetic. Parties, advocates, judges, insurers and case numbers are fictional. Statute section numbers cited as statute_in_corpus were checked against the 'Acts and Laws' folder.",
+  "citation_classes": {
+    "statute_in_corpus": "real provision present in 'Acts and Laws' -> fact-check should return SUPPORTED/resolved",
+    "statute_not_in_corpus": "real Act not loaded -> NOT FOUND (not 'false')",
+    "case_in_set": "fictional case that exists in this synthetic set -> resolves within the firm knowledge base",
+    "case_external": "fictional case outside every corpus -> NOT FOUND",
+    "fabricated": "cannot exist (e.g. section beyond the Act) -> citation guardrail MUST reject"
+  },
+  "judgments": [
+    {
+      "id": "J01",
+      "file": "Amani Bakers Ltd v Salama Takaful Insurance Ltd (Commercial Case E914of2025) [2026] KEHC 99104 (KLR) (12March2026) (Judgment).pdf",
+      "format": "pdf_text",
+      "docx_numbering": null,
+      "password": null,
+      "kind": "judgment",
+      "court_level": "High Court",
+      "neutral_citation": "[2026] KEHC 99104 (KLR)",
+      "date": "2026-03-12",
+      "practice_area": "insurance",
+      "expected_doc_type": "judgment",
+      "expected_sensitivity": "normal",
+      "numbered_paragraphs": 12,
+      "ocr_required": false,
+      "version_of": null,
+      "expected_changes": null,
+      "citations": [
+        {
+          "text": "section 19A of the Insurance Act",
+          "target": "Insurance Act s.19A",
+          "cls": "statute_in_corpus"
+        },
+        {
+          "text": "Mwangaza Holdings Ltd v Tausi Insurance Co Ltd [2019] KEHC 90211 (KLR)",
+          "target": null,
+          "cls": "case_external"
+        },
+        {
+          "text": "Article 40 of the Constitution",
+          "target": "Constitution Art.40",
+          "cls": "statute_in_corpus"
+        }
+      ],
+      "amounts": [
+        "KES 14,250,000",
+        "KES 12,980,500"
+      ],
+      "periods": [
+        "7 days"
+      ],
+      "ground_truth_text": "ground-truth/text/J01.txt",
+      "suggested_scope": "firm_kb"
+    },
+    {
+      "id": "J02",
+      "file": "Otieno v Pwani Logistics Ltd (Cause E2207of2025) [2026] KEELRC 99318 (KLR) (5June2026) (Judgment).docx",
+      "format": "docx",
+      "docx_numbering": "typed",
+      "password": null,
+      "kind": "judgment",
+      "court_level": "ELRC",
+      "neutral_citation": "[2026] KEELRC 99318 (KLR)",
+      "date": "2026-06-05",
+      "practice_area": "employment",
+      "expected_doc_type": "judgment",
+      "expected_sensitivity": "normal",
+      "numbered_paragraphs": 11,
+      "ocr_required": false,
+      "version_of": null,
+      "expected_changes": null,
+      "citations": [
+        {
+          "text": "section 19 of the National Social Security Fund Act, 2013",
+          "target": "NSSF Act s.19",
+          "cls": "statute_in_corpus"
+        },
+        {
+          "text": "Section 22 of the same Act",
+          "target": "NSSF Act s.22",
+          "cls": "statute_in_corpus"
+        },
+        {
+          "text": "section 45 of the Employment Act, 2007",
+          "target": "Employment Act s.45",
+          "cls": "statute_not_in_corpus"
+        },
+        {
+          "text": "Kaluma v Bahari Freight Services Ltd [2022] KEELRC 90554 (KLR)",
+          "target": null,
+          "cls": "case_external"
+        }
+      ],
+      "amounts": [
+        "KES 38,500",
+        "KES 2,160",
+        "KES 231,000",
+        "KES 23,100"
+      ],
+      "periods": [
+        "30 days"
+      ],
+      "ground_truth_text": "ground-truth/text/J02.txt",
+      "suggested_scope": "firm_kb"
+    },
+    {
+      "id": "J03",
+      "file": "In re Estate of JKM (Succession Cause E331of2025) [2026] KEHC 99577 (KLR) (20August2026) (Ruling).docx",
+      "format": "docx",
+      "docx_numbering": "auto",
+      "password": null,
+      "kind": "ruling",
+      "court_level": "High Court",
+      "neutral_citation": "[2026] KEHC 99577 (KLR)",
+      "date": "2026-08-20",
+      "practice_area": "family",
+      "expected_doc_type": "judgment",
+      "expected_sensitivity": "sensitive",
+      "numbered_paragraphs": 9,
+      "ocr_required": false,
+      "version_of": null,
+      "expected_changes": null,
+      "citations": [
+        {
+          "text": "sections 37 and 40 ... National Social Security Fund Act, 2013",
+          "target": "NSSF Act s.37, s.40",
+          "cls": "statute_in_corpus"
+        },
+        {
+          "text": "Article 53(2) of the Constitution",
+          "target": "Constitution Art.53",
+          "cls": "statute_in_corpus"
+        },
+        {
+          "text": "Children Act, 2022",
+          "target": "Children Act",
+          "cls": "statute_not_in_corpus"
+        },
+        {
+          "text": "Law of Succession Act",
+          "target": "Law of Succession Act",
+          "cls": "statute_not_in_corpus"
+        }
+      ],
+      "amounts": [
+        "KES 45,000"
+      ],
+      "periods": [],
+      "ground_truth_text": "ground-truth/text/J03.txt",
+      "suggested_scope": "firm_kb"
+    },
+    {
+      "id": "J04",
+      "file": "Trustees of Mazingira Staff Pension Scheme v Retirement Benefits Authority (Tribunal Appeal E019of2025) [2026] KERBT 99042 (KLR) (9July2026) (Judgment).pdf",
+      "format": "pdf_text",
+      "docx_numbering": null,
+      "password": null,
+      "kind": "judgment",
+      "court_level": "Tribunal",
+      "neutral_citation": "[2026] KERBT 99042 (KLR)",
+      "date": "2026-07-09",
+      "practice_area": "pensions",
+      "expected_doc_type": "judgment",
+      "expected_sensitivity": "normal",
+      "numbered_paragraphs": 10,
+      "ocr_required": false,
+      "version_of": null,
+      "expected_changes": null,
+      "citations": [
+        {
+          "text": "section 28 of the Retirement Benefits Act, 1997",
+          "target": "Retirement Benefits Act s.28",
+          "cls": "statute_in_corpus"
+        },
+        {
+          "text": "section 31 of the Act",
+          "target": "Retirement Benefits Act s.31",
+          "cls": "statute_in_corpus"
+        },
+        {
+          "text": "Article 47 of the Constitution",
+          "target": "Constitution Art.47",
+          "cls": "statute_in_corpus"
+        },
+        {
+          "text": "Trustees of Kilimo Provident Fund v Retirement Benefits Authority [2021] KERBT 90017 (KLR)",
+          "target": null,
+          "cls": "case_external"
+        }
+      ],
+      "amounts": [
+        "KES 1.3 billion"
+      ],
+      "periods": [
+        "14 days",
+        "60 days"
+      ],
+      "ground_truth_text": "ground-truth/text/J04.txt",
+      "suggested_scope": "firm_kb"
+    },
+    {
+      "id": "J04b",
+      "file": "Trustees of Mazingira Staff Pension Scheme v Retirement Benefits Authority (Tribunal Appeal E019of2025) [2026] KERBT 99042 (KLR) (16July2026) (Corrected Judgment).pdf",
+      "format": "pdf_text",
+      "docx_numbering": null,
+      "password": null,
+      "kind": "judgment",
+      "court_level": "Tribunal",
+      "neutral_citation": "[2026] KERBT 99042 (KLR)",
+      "date": "2026-07-16",
+      "practice_area": "pensions",
+      "expected_doc_type": "judgment",
+      "expected_sensitivity": "normal",
+      "numbered_paragraphs": 10,
+      "ocr_required": false,
+      "version_of": "J04",
+      "expected_changes": [
+        "date line changed",
+        "order 1: remittal added",
+        "order 2: 60 days -> 90 days (numeric_or_date_change)"
+      ],
+      "citations": [
+        {
+          "text": "section 28 of the Retirement Benefits Act, 1997",
+          "target": "Retirement Benefits Act s.28",
+          "cls": "statute_in_corpus"
+        },
+        {
+          "text": "section 31 of the Act",
+          "target": "Retirement Benefits Act s.31",
+          "cls": "statute_in_corpus"
+        },
+        {
+          "text": "Article 47 of the Constitution",
+          "target": "Constitution Art.47",
+          "cls": "statute_in_corpus"
+        },
+        {
+          "text": "Trustees of Kilimo Provident Fund v Retirement Benefits Authority [2021] KERBT 90017 (KLR)",
+          "target": null,
+          "cls": "case_external"
+        }
+      ],
+      "amounts": [
+        "KES 1.3 billion"
+      ],
+      "periods": [
+        "14 days",
+        "90 days"
+      ],
+      "ground_truth_text": "ground-truth/text/J04b.txt",
+      "suggested_scope": "firm_kb"
+    },
+    {
+      "id": "J05",
+      "file": "Ujenzi Bora Contractors Ltd v Commissioner of Domestic Taxes (Tax Appeal E1102of2025) [2026] KETAT 99716 (KLR) (24September2026) (Judgment).docx",
+      "format": "docx",
+      "docx_numbering": "auto",
+      "password": null,
+      "kind": "judgment",
+      "court_level": "Tribunal",
+      "neutral_citation": "[2026] KETAT 99716 (KLR)",
+      "date": "2026-09-24",
+      "practice_area": "tax",
+      "expected_doc_type": "judgment",
+      "expected_sensitivity": "normal",
+      "numbered_paragraphs": 8,
+      "ocr_required": false,
+      "version_of": null,
+      "expected_changes": null,
+      "citations": [
+        {
+          "text": "section 4 of the Affordable Housing Act, 2024",
+          "target": "Affordable Housing Act s.4",
+          "cls": "statute_in_corpus"
+        },
+        {
+          "text": "section 7 of that Act",
+          "target": "Affordable Housing Act s.7",
+          "cls": "statute_in_corpus"
+        },
+        {
+          "text": "Article 47 of the Constitution",
+          "target": "Constitution Art.47",
+          "cls": "statute_in_corpus"
+        }
+      ],
+      "amounts": [
+        "KES 3,846,220",
+        "KES 2,915,400"
+      ],
+      "periods": [
+        "30 days"
+      ],
+      "ground_truth_text": "ground-truth/text/J05.txt",
+      "suggested_scope": "firm_kb"
+    },
+    {
+      "id": "J06",
+      "file": "Mutiso v Insurance Institute of Kenya Council (Appeal E007of2026) [2026] KEHC 99852 (KLR) (2October2026) (Judgment).pdf",
+      "format": "pdf_password",
+      "docx_numbering": null,
+      "password": "lygo-test",
+      "kind": "judgment",
+      "court_level": "High Court",
+      "neutral_citation": "[2026] KEHC 99852 (KLR)",
+      "date": "2026-10-02",
+      "practice_area": "insurance",
+      "expected_doc_type": "judgment",
+      "expected_sensitivity": "normal",
+      "numbered_paragraphs": 6,
+      "ocr_required": false,
+      "version_of": null,
+      "expected_changes": null,
+      "citations": [
+        {
+          "text": "section 22 of the Insurance Professionals Act, 2021",
+          "target": "Insurance Professionals Act s.22",
+          "cls": "statute_in_corpus"
+        },
+        {
+          "text": "section 28 of that Act",
+          "target": "Insurance Professionals Act s.28",
+          "cls": "statute_in_corpus"
+        },
+        {
+          "text": "Article 50(1) of the Constitution",
+          "target": "Constitution Art.50",
+          "cls": "statute_in_corpus"
+        }
+      ],
+      "amounts": [],
+      "periods": [
+        "2 days",
+        "45 days"
+      ],
+      "ground_truth_text": "ground-truth/text/J06.txt",
+      "suggested_scope": "firm_kb"
+    },
+    {
+      "id": "J07",
+      "file": "AWN v DKO (Children Case E118of2025) [2026] KEMC 99263 (KLR) (14October2026) (Judgment).docx",
+      "format": "docx",
+      "docx_numbering": "typed",
+      "password": null,
+      "kind": "judgment",
+      "court_level": "Magistrates Court",
+      "neutral_citation": "[2026] KEMC 99263 (KLR)",
+      "date": "2026-10-14",
+      "practice_area": "family",
+      "expected_doc_type": "judgment",
+      "expected_sensitivity": "sensitive",
+      "numbered_paragraphs": 7,
+      "ocr_required": false,
+      "version_of": null,
+      "expected_changes": null,
+      "citations": [
+        {
+          "text": "Article 53(2) of the Constitution",
+          "target": "Constitution Art.53",
+          "cls": "statute_in_corpus"
+        }
+      ],
+      "amounts": [
+        "KES 60,000",
+        "KES 142,300",
+        "KES 51,000",
+        "KES 40,000"
+      ],
+      "periods": [],
+      "ground_truth_text": "ground-truth/text/J07.txt",
+      "suggested_scope": "firm_kb"
+    },
+    {
+      "id": "J08",
+      "file": "Nuru Pharmacy Ltd v Jamhuri Plaza Properties Ltd (Tribunal Case E640of2025) [2026] KEBPRT 99390 (KLR) (30April2026) (Ruling).pdf",
+      "format": "pdf_text",
+      "docx_numbering": null,
+      "password": null,
+      "kind": "ruling",
+      "court_level": "Tribunal",
+      "neutral_citation": "[2026] KEBPRT 99390 (KLR)",
+      "date": "2026-04-30",
+      "practice_area": "property",
+      "expected_doc_type": "judgment",
+      "expected_sensitivity": "normal",
+      "numbered_paragraphs": 6,
+      "ocr_required": false,
+      "version_of": null,
+      "expected_changes": null,
+      "citations": [
+        {
+          "text": "Article 40 of the Constitution",
+          "target": "Constitution Art.40",
+          "cls": "statute_in_corpus"
+        }
+      ],
+      "amounts": [
+        "KES 85,000",
+        "KES 140,000"
+      ],
+      "periods": [
+        "90 days",
+        "24 hours"
+      ],
+      "ground_truth_text": "ground-truth/text/J08.txt",
+      "suggested_scope": "firm_kb"
+    },
+    {
+      "id": "J09",
+      "file": "Chebet v Haraka Mobile Loans Ltd (Petition E271of2025) [2026] KEHC 99731 (KLR) (22October2026) (Judgment).docx",
+      "format": "docx",
+      "docx_numbering": "auto",
+      "password": null,
+      "kind": "judgment",
+      "court_level": "High Court",
+      "neutral_citation": "[2026] KEHC 99731 (KLR)",
+      "date": "2026-10-22",
+      "practice_area": "data_protection",
+      "expected_doc_type": "judgment",
+      "expected_sensitivity": "normal",
+      "numbered_paragraphs": 7,
+      "ocr_required": false,
+      "version_of": null,
+      "expected_changes": null,
+      "citations": [
+        {
+          "text": "Article 31 of the Constitution",
+          "target": "Constitution Art.31",
+          "cls": "statute_in_corpus"
+        },
+        {
+          "text": "Article 28",
+          "target": "Constitution Art.28",
+          "cls": "statute_in_corpus"
+        },
+        {
+          "text": "section 25 of the Data Protection Act, 2019",
+          "target": "Data Protection Act s.25",
+          "cls": "statute_not_in_corpus"
+        },
+        {
+          "text": "Amani Bakers Ltd v Salama Takaful Insurance Ltd [2026] KEHC 99104 (KLR)",
+          "target": "J01",
+          "cls": "case_in_set"
+        },
+        {
+          "text": "Nuru Pharmacy Ltd v Jamhuri Plaza Properties Ltd [2026] KEBPRT 99390 (KLR)",
+          "target": "J08",
+          "cls": "case_in_set"
+        }
+      ],
+      "amounts": [
+        "KES 4,500",
+        "KES 350,000"
+      ],
+      "periods": [
+        "14 days"
+      ],
+      "ground_truth_text": "ground-truth/text/J09.txt",
+      "suggested_scope": "firm_kb"
+    },
+    {
+      "id": "J10",
+      "file": "Baraka Haulage Ltd v Mlinzi Insurance Brokers Ltd (Civil Case E808of2025) [2026] KEHC 99905 (KLR) (29October2026) (Judgment).pdf",
+      "format": "pdf_text",
+      "docx_numbering": null,
+      "password": null,
+      "kind": "judgment",
+      "court_level": "High Court",
+      "neutral_citation": "[2026] KEHC 99905 (KLR)",
+      "date": "2026-10-29",
+      "practice_area": "insurance",
+      "expected_doc_type": "judgment",
+      "expected_sensitivity": "normal",
+      "numbered_paragraphs": 6,
+      "ocr_required": false,
+      "version_of": null,
+      "expected_changes": null,
+      "citations": [
+        {
+          "text": "section 312 of the Insurance Act",
+          "target": "Insurance Act s.312",
+          "cls": "fabricated"
+        },
+        {
+          "text": "Kamau v Imara Brokers Ltd [2018] KECA 45512 (KLR)",
+          "target": null,
+          "cls": "fabricated"
+        }
+      ],
+      "amounts": [
+        "KES 1,184,000",
+        "KES 6,420,000"
+      ],
+      "periods": [],
+      "ground_truth_text": "ground-truth/text/J10.txt",
+      "suggested_scope": "firm_kb"
+    },
+    {
+      "id": "J11",
+      "file": "Wekesa v Tumaini Sacco Society Ltd (Civil Suit 412of2014) [2015] KEMC 98117 (KLR) (17March2015) (Ruling) - scanned.pdf",
+      "format": "scan_pdf",
+      "docx_numbering": null,
+      "password": null,
+      "kind": "ruling",
+      "court_level": "Magistrates Court",
+      "neutral_citation": "[2015] KEMC 98117 (KLR)",
+      "date": "2015-03-17",
+      "practice_area": "cooperatives",
+      "expected_doc_type": "judgment",
+      "expected_sensitivity": "normal",
+      "numbered_paragraphs": 3,
+      "ocr_required": true,
+      "version_of": null,
+      "expected_changes": null,
+      "citations": [],
+      "amounts": [
+        "KES 286,400"
+      ],
+      "periods": [],
+      "ground_truth_text": "ground-truth/text/J11.txt",
+      "suggested_scope": "firm_kb"
+    },
+    {
+      "id": "J01-dup",
+      "file": "Amani Bakers Ltd v Salama Takaful Insurance Ltd (Commercial Case E914of2025) [2026] KEHC 99104 (KLR) (12March2026) (Judgment) (1).pdf",
+      "duplicate_of": "J01",
+      "note": "byte-identical: dedup must catch it (same SHA-256)"
+    }
+  ],
+  "client_documents": [
+    {
+      "id": "C01",
+      "file": "C01 - Tausi Medical Cover - policy wording and schedule (scan).pdf",
+      "client": "Grace Akinyi Ouma",
+      "matter": "Medical claim refusal",
+      "delivered_as": "scan_pdf",
+      "scan_profile": {
+        "dpi": 300,
+        "skew": 0.4,
+        "noise": 6,
+        "blur": 0.0,
+        "jpeg": 85
+      },
+      "password": null,
+      "language": "en",
+      "version_of": null,
+      "suggested_scope": "client",
+      "expected": {
+        "doc_type": "insurance_policy",
+        "sensitivity": "sensitive",
+        "flags": [
+          "ins.exclusion.pre_existing",
+          "ins.claim.notice_window(14)"
+        ],
+        "not_flags": [
+          "ins.missing.policy_schedule",
+          "core.notice_period"
+        ],
+        "review_queue": false,
+        "pages": 2
+      },
+      "ocr_required": true,
+      "ground_truth_text": "ground-truth/text/C01.txt"
+    },
+    {
+      "id": "C02",
+      "file": "C02 - Salama Takaful fire policy - wording only, schedule missing (scan).pdf",
+      "client": "Amani Bakers Ltd",
+      "matter": "Fire claim (see J01)",
+      "delivered_as": "scan_pdf",
+      "scan_profile": {
+        "dpi": 200,
+        "skew": 1.5,
+        "noise": 10,
+        "blur": 0.4,
+        "jpeg": 70
+      },
+      "password": null,
+      "language": "en",
+      "version_of": null,
+      "suggested_scope": "client",
+      "expected": {
+        "doc_type": "insurance_policy",
+        "sensitivity": "normal",
+        "flags": [
+          "ins.claim.notice_window(7)",
+          "ins.missing.policy_schedule"
+        ],
+        "review_queue": false,
+        "pages": 1
+      },
+      "ocr_required": true,
+      "ground_truth_text": "ground-truth/text/C02.txt"
+    },
+    {
+      "id": "C03",
+      "file": "C03 - Motor claim form - handwritten (phone photo).jpg",
+      "client": "Baraka Haulage Ltd",
+      "matter": "Goods-in-transit loss (see J10)",
+      "delivered_as": "jpg",
+      "scan_profile": {
+        "phone": true,
+        "dpi": 150,
+        "noise": 10,
+        "jpeg": 60
+      },
+      "password": null,
+      "language": "en",
+      "version_of": null,
+      "suggested_scope": "client",
+      "expected": {
+        "doc_type": "claim_form",
+        "sensitivity": "normal",
+        "flags": [],
+        "review_queue": true,
+        "pages": 1,
+        "note": "handwriting: expect low OCR confidence -> human review queue"
+      },
+      "ocr_required": true,
+      "ground_truth_text": "ground-truth/text/C03.txt"
+    },
+    {
+      "id": "C04",
+      "file": "C04 - Letter declining claim - stamped and signed (scan).pdf",
+      "client": "Amani Bakers Ltd",
+      "matter": "Fire claim (see J01)",
+      "delivered_as": "scan_pdf",
+      "scan_profile": {
+        "dpi": 200,
+        "skew": 1.5,
+        "noise": 10,
+        "blur": 0.4,
+        "jpeg": 70
+      },
+      "password": null,
+      "language": "en",
+      "version_of": null,
+      "suggested_scope": "client",
+      "expected": {
+        "doc_type": "letter",
+        "sensitivity": "normal",
+        "flags": [],
+        "review_queue": false,
+        "pages": 1
+      },
+      "ocr_required": true,
+      "ground_truth_text": "ground-truth/text/C04.txt"
+    },
+    {
+      "id": "C05",
+      "file": "C05 - Loss assessor preliminary report (fax quality).tif",
+      "client": "Amani Bakers Ltd",
+      "matter": "Fire claim (see J01)",
+      "delivered_as": "tiff",
+      "scan_profile": {
+        "dpi": 140,
+        "skew": 0.8,
+        "noise": 4,
+        "blur": 0.2,
+        "jpeg": 90,
+        "binarize": true
+      },
+      "password": null,
+      "language": "en",
+      "version_of": null,
+      "suggested_scope": "client",
+      "expected": {
+        "doc_type": null,
+        "sensitivity": "normal",
+        "flags": [],
+        "review_queue": true,
+        "pages": 1,
+        "note": "100 dpi binarised fax: tables are hard for OCR"
+      },
+      "ocr_required": true,
+      "ground_truth_text": "ground-truth/text/C05.txt"
+    },
+    {
+      "id": "C06",
+      "file": "C06 - Lease of shop G14 Jamhuri Plaza (scan, page 2 sideways).pdf",
+      "client": "Nuru Pharmacy Ltd",
+      "matter": "Lock-out and rent increase (see J08)",
+      "delivered_as": "scan_pdf",
+      "scan_profile": {
+        "dpi": 200,
+        "skew": 1.5,
+        "noise": 10,
+        "blur": 0.4,
+        "jpeg": 70
+      },
+      "password": null,
+      "language": "en",
+      "version_of": null,
+      "suggested_scope": "client",
+      "expected": {
+        "doc_type": "tenancy_agreement",
+        "sensitivity": "normal",
+        "flags": [
+          "core.auto_renewal",
+          "core.notice_period(90)",
+          "core.indemnity"
+        ],
+        "not_flags": [
+          "core.termination.missing",
+          "core.governing_law.missing"
+        ],
+        "review_queue": false,
+        "pages": 3,
+        "note": "page 2 is rotated 90 degrees: tests auto-rotation / OSD before OCR"
+      },
+      "ocr_required": true,
+      "ground_truth_text": "ground-truth/text/C06.txt"
+    },
+    {
+      "id": "C07",
+      "file": "C07 - Employment contract - Otieno (scan with stain).pdf",
+      "client": "Brian Ochieng Otieno",
+      "matter": "Unfair termination and NSSF (see J02)",
+      "delivered_as": "scan_pdf",
+      "scan_profile": {
+        "dpi": 200,
+        "skew": 1.5,
+        "noise": 10,
+        "blur": 0.4,
+        "jpeg": 70,
+        "stain": true
+      },
+      "password": null,
+      "language": "en",
+      "version_of": null,
+      "suggested_scope": "client",
+      "expected": {
+        "doc_type": "employment_contract",
+        "sensitivity": "normal",
+        "flags": [
+          "core.governing_law.missing",
+          "core.notice_period(30)",
+          "core.termination.missing"
+        ],
+        "review_queue": false,
+        "pages": 1,
+        "note": "says 'end this contract', never 'terminate': core.termination.missing fires (a known regex blind spot worth a test)"
+      },
+      "ocr_required": true,
+      "ground_truth_text": "ground-truth/text/C07.txt"
+    },
+    {
+      "id": "C18",
+      "file": "C18 - Employment contract - Otieno - amended 2023 (scan).pdf",
+      "client": "Brian Ochieng Otieno",
+      "matter": "Unfair termination and NSSF (see J02)",
+      "delivered_as": "scan_pdf",
+      "scan_profile": {
+        "dpi": 200,
+        "skew": 1.5,
+        "noise": 10,
+        "blur": 0.4,
+        "jpeg": 70
+      },
+      "password": null,
+      "language": "en",
+      "version_of": "C07",
+      "suggested_scope": "client",
+      "expected": {
+        "doc_type": "employment_contract",
+        "sensitivity": "normal",
+        "flags": [
+          "core.governing_law.missing",
+          "core.notice_period(30)",
+          "core.termination.missing"
+        ],
+        "review_queue": false,
+        "pages": 1,
+        "compare_with": "C07",
+        "expected_changes": [
+          "clause 2: probation 3 -> 6 months",
+          "clause 3: KES 32,000 -> KES 38,500"
+        ]
+      },
+      "ocr_required": true,
+      "ground_truth_text": "ground-truth/text/C18.txt"
+    },
+    {
+      "id": "C08",
+      "file": "C08 - Payslip March 2024 - Otieno (phone photo).jpg",
+      "client": "Brian Ochieng Otieno",
+      "matter": "Unfair termination and NSSF (see J02)",
+      "delivered_as": "jpg",
+      "scan_profile": {
+        "phone": true,
+        "dpi": 200,
+        "noise": 9,
+        "jpeg": 62
+      },
+      "password": null,
+      "language": "en",
+      "version_of": null,
+      "suggested_scope": "client",
+      "expected": {
+        "doc_type": null,
+        "sensitivity": "normal",
+        "flags": [],
+        "review_queue": false,
+        "pages": 1,
+        "note": "table extraction; links to NSSF Act s.22 and Affordable Housing Act s.4 via matter facts"
+      },
+      "ocr_required": true,
+      "ground_truth_text": "ground-truth/text/C08.txt"
+    },
+    {
+      "id": "C09",
+      "file": "C09 - Member contribution statement (scan).png",
+      "client": "Brian Ochieng Otieno",
+      "matter": "Unfair termination and NSSF (see J02)",
+      "delivered_as": "png",
+      "scan_profile": {
+        "dpi": 300,
+        "skew": 0.4,
+        "noise": 6,
+        "blur": 0.0,
+        "jpeg": 85
+      },
+      "password": null,
+      "language": "en",
+      "version_of": null,
+      "suggested_scope": "client",
+      "expected": {
+        "doc_type": null,
+        "sensitivity": "normal",
+        "flags": [],
+        "review_queue": false,
+        "pages": 1,
+        "note": "layout is generic, not a copy of any real NSSF form"
+      },
+      "ocr_required": true,
+      "ground_truth_text": "ground-truth/text/C09.txt"
+    },
+    {
+      "id": "C10",
+      "file": "C10 - Demand letter - Nuru Pharmacy to Jamhuri Plaza (scan).pdf",
+      "client": "Nuru Pharmacy Ltd",
+      "matter": "Lock-out and rent increase (see J08)",
+      "delivered_as": "scan_pdf",
+      "scan_profile": {
+        "dpi": 300,
+        "skew": 0.4,
+        "noise": 6,
+        "blur": 0.0,
+        "jpeg": 85
+      },
+      "password": null,
+      "language": "en",
+      "version_of": null,
+      "suggested_scope": "client",
+      "expected": {
+        "doc_type": "letter",
+        "sensitivity": "normal",
+        "flags": [],
+        "review_queue": false,
+        "pages": 1
+      },
+      "ocr_required": true,
+      "ground_truth_text": "ground-truth/text/C10.txt"
+    },
+    {
+      "id": "C11",
+      "file": "C11 - Barua ya notisi kwa mpangaji - Swahili (phone photo).jpg",
+      "client": "Nuru Pharmacy Ltd",
+      "matter": "Lock-out and rent increase (see J08)",
+      "delivered_as": "jpg",
+      "scan_profile": {
+        "phone": true,
+        "dpi": 200,
+        "noise": 8,
+        "jpeg": 65
+      },
+      "password": null,
+      "language": "sw",
+      "version_of": null,
+      "suggested_scope": "client",
+      "expected": {
+        "doc_type": null,
+        "sensitivity": "normal",
+        "flags": [],
+        "review_queue": false,
+        "pages": 1,
+        "language": "sw",
+        "note": "needs Swahili OCR model (swa); English-only OCR will misread diacritics-free but unfamiliar words"
+      },
+      "ocr_required": true,
+      "ground_truth_text": "ground-truth/text/C11.txt"
+    },
+    {
+      "id": "C12",
+      "file": "C12 - Tribunal order - page 1 digital, page 2 scanned with stamp.pdf",
+      "client": "Nuru Pharmacy Ltd",
+      "matter": "Lock-out and rent increase (see J08)",
+      "delivered_as": "mixed_pdf",
+      "scan_profile": {
+        "dpi": 200,
+        "skew": 1.5,
+        "noise": 10,
+        "blur": 0.4,
+        "jpeg": 70
+      },
+      "password": null,
+      "language": "en",
+      "version_of": null,
+      "suggested_scope": "client",
+      "expected": {
+        "doc_type": "court_order",
+        "sensitivity": "normal",
+        "flags": [],
+        "review_queue": false,
+        "pages": 2,
+        "note": "page 1 has a text layer (method=text); page 2 is image-only (method=ocr)"
+      },
+      "ocr_required": true,
+      "ground_truth_text": "ground-truth/text/C12.txt"
+    },
+    {
+      "id": "C13",
+      "file": "C13 - Witness statement - handwritten, 2 pages (poor scan).pdf",
+      "client": "Baraka Haulage Ltd",
+      "matter": "Goods-in-transit loss (see J10)",
+      "delivered_as": "scan_pdf",
+      "scan_profile": {
+        "dpi": 150,
+        "skew": 2.8,
+        "noise": 22,
+        "blur": 1.0,
+        "jpeg": 45,
+        "photocopy": true
+      },
+      "password": null,
+      "language": "en",
+      "version_of": null,
+      "suggested_scope": "client",
+      "expected": {
+        "doc_type": null,
+        "sensitivity": "normal",
+        "flags": [],
+        "review_queue": true,
+        "pages": 2,
+        "note": "handwriting + poor photocopy: every page should be queued for review"
+      },
+      "ocr_required": true,
+      "ground_truth_text": "ground-truth/text/C13.txt"
+    },
+    {
+      "id": "C14",
+      "file": "C14 - Medical report - Grace Akinyi Ouma (scan).pdf",
+      "client": "Grace Akinyi Ouma",
+      "matter": "Medical claim refusal",
+      "delivered_as": "scan_pdf",
+      "scan_profile": {
+        "dpi": 300,
+        "skew": 0.4,
+        "noise": 6,
+        "blur": 0.0,
+        "jpeg": 85
+      },
+      "password": null,
+      "language": "en",
+      "version_of": null,
+      "suggested_scope": "client",
+      "expected": {
+        "doc_type": "medical_report",
+        "sensitivity": "sensitive",
+        "flags": [],
+        "review_queue": false,
+        "pages": 1,
+        "note": "must be tagged sensitive (health data, DPA s.2) -> stricter access, consent for cross-border"
+      },
+      "ocr_required": true,
+      "ground_truth_text": "ground-truth/text/C14.txt"
+    },
+    {
+      "id": "C15",
+      "file": "C15 - Blank page scanned by mistake.pdf",
+      "client": "Grace Akinyi Ouma",
+      "matter": "Medical claim refusal",
+      "delivered_as": "scan_pdf",
+      "scan_profile": {
+        "dpi": 150,
+        "skew": 2.8,
+        "noise": 18,
+        "blur": 1.0,
+        "jpeg": 45,
+        "photocopy": true
+      },
+      "password": null,
+      "language": "en",
+      "version_of": null,
+      "suggested_scope": "client",
+      "expected": {
+        "doc_type": null,
+        "sensitivity": "normal",
+        "flags": [],
+        "review_queue": true,
+        "pages": 1,
+        "note": "empty OCR output: must not crash; should be flagged"
+      },
+      "ocr_required": true,
+      "ground_truth_text": "ground-truth/text/C15.txt"
+    },
+    {
+      "id": "C16",
+      "file": "C16 - Policy certificate emailed by insurer - password protected.pdf",
+      "client": "Grace Akinyi Ouma",
+      "matter": "Medical claim refusal",
+      "delivered_as": "text_pdf",
+      "scan_profile": null,
+      "password": "lygo-test",
+      "language": "en",
+      "version_of": null,
+      "suggested_scope": "client",
+      "expected": {
+        "doc_type": null,
+        "sensitivity": "normal",
+        "flags": [],
+        "review_queue": false,
+        "pages": 1,
+        "note": "password_protected=True: pipeline should stop and ask for the password, not OCR"
+      },
+      "ocr_required": false,
+      "ground_truth_text": "ground-truth/text/C16.txt"
+    },
+    {
+      "id": "C17",
+      "file": "C17 - Demand letter - Nuru Pharmacy to Jamhuri Plaza (scan) - re-uploaded copy.pdf",
+      "duplicate_of": "C10",
+      "note": "byte-identical re-upload: dedup must catch it"
+    }
+  ]
+}

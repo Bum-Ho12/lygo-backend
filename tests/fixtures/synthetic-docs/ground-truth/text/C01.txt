@@ -1,0 +1,26 @@
+TAUSI GENERAL INSURANCE COMPANY LIMITED
+P.O. Box 00000-00100 Nairobi  |  claims@tausi-insurance.example
+INDIVIDUAL MEDICAL COVER - POLICY WORDING
+1. Definitions
+In this policy 'the Insurer' means Tausi General Insurance Company Limited and 'the Insured' means the person named in the Policy Schedule.
+2. Cover
+The Insurer will pay reasonable and customary inpatient and outpatient medical expenses incurred by the Insured during the period of insurance, up to the limits shown in the Policy Schedule.
+3. Exclusions
+The Insurer shall not be liable for any claim arising from a pre-existing condition, meaning any illness or injury for which the Insured received treatment or advice in the 24 months before the start date, unless declared and accepted in writing.
+The Insurer shall not be liable for cosmetic treatment, experimental procedures or treatment outside Kenya unless pre-approved.
+4. Claims
+The Insured must notify the Insurer of any hospital admission within 14 days of admission and submit original invoices, discharge summary and prescription records.
+5. Renewal and termination
+This policy is annual. The Insurer may terminate it on 30 days' written notice for non-payment of premium.
+
+POLICY SCHEDULE
+Policy number | TGI/MED/2025/118204
+Insured | Grace Akinyi Ouma
+Period of insurance | 1 January 2025 to 31 December 2025
+Inpatient limit | KES 1,000,000
+Outpatient limit | KES 100,000
+Annual premium | KES 68,400
+Waiting period | 30 days (general), 12 months (chronic)
+Issued at Nairobi on 20 December 2024.
+____________________
+For: Tausi General Insurance Company Limited

@@ -1,0 +1,20 @@
+REPUBLIC OF KENYA
+IN THE HIGH COURT OF KENYA AT ELDORET
+CONSTITUTIONAL AND HUMAN RIGHTS DIVISION
+PETITION NO. E271 OF 2025
+BETWEEN
+FAITH JEPKOECH CHEBET ........ PETITIONER
+AND
+HARAKA MOBILE LOANS LIMITED ........ RESPONDENT
+JUDGMENT
+Coram: Hon. Justice T. O. Wambua-Keter
+Delivered on 22nd October 2026
+1. The Petitioner borrowed KES 4,500 from the Respondent through its mobile application. When the loan fell into arrears, the Respondent sent messages to 37 people in the Petitioner's phone contacts describing her as a defaulter.
+2. She contends that this violated her right to privacy under Article 31 of the Constitution and her right to human dignity under Article 28, and that the processing of her contacts' data breached the principles in section 25 of the Data Protection Act, 2019.
+3. The Respondent says that the Petitioner consented to access to her contacts when she installed the application.
+4. Consent to access a contact list for identity verification is not consent to disclose the borrower's debt to those contacts. The disclosure served no lawful purpose and was designed to shame the Petitioner.
+5. Courts have repeatedly held that a commercial party must prove the precise terms it relies on, as in Amani Bakers Ltd v Salama Takaful Insurance Ltd [2026] KEHC 99104 (KLR), and that self-help remedies are not available where the law provides a procedure, as in Nuru Pharmacy Ltd v Jamhuri Plaza Properties Ltd [2026] KEBPRT 99390 (KLR).
+6. A declaration is issued that the Respondent violated the Petitioner's rights under Articles 28 and 31 of the Constitution. The Respondent shall pay general damages of KES 350,000 and shall delete the contact data of third parties obtained from the Petitioner's phone within 14 days.
+7. The Respondent shall pay the costs of the petition.
+T. O. WAMBUA-KETER
+JUDGE
