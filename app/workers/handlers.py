@@ -82,6 +82,6 @@ def build_handlers(d: WorkerDeps) -> dict[str, Handler]:
     return {"ingest.process_document": ingest, "sms.deliver": sms_deliver, "sms.sweep": sms_sweep, "documents.reap_stuck": reap_stuck, "jobs.purge": purge}
 
 
-from sqlalchemy import text  # noqa: E402
+from sqlalchemy import text
 
 _FIRMS_SQL = text("SELECT DISTINCT firm_id FROM jobs WHERE false UNION SELECT id FROM firms WHERE deleted_at IS NULL")

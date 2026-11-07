@@ -1,9 +1,11 @@
 """RFC 9457 problem+json errors. See docs/08-api-design.md."""
 from typing import Any
 
+import structlog
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import InterfaceError, OperationalError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 PROBLEM_JSON = "application/problem+json"
@@ -59,6 +61,16 @@ def install_error_handlers(app: FastAPI) -> None:
             exc.status_code, "http_error"
         )
         return _problem(request, exc.status_code, code, str(exc.detail), str(exc.detail))
+
+    @app.exception_handler(OperationalError)
+    @app.exception_handler(InterfaceError)
+    @app.exception_handler(ConnectionRefusedError)
+    async def _db_unavailable(request: Request, exc: Exception) -> JSONResponse:
+        # Database down / unreachable: a clear, retryable 503 instead of a stack-trace 500.
+        structlog.get_logger().error("database.unavailable", error=type(exc).__name__, detail=str(exc).splitlines()[0][:200])
+        resp = _problem(request, 503, "database_unavailable", "Service unavailable", "The database is unavailable. Please try again shortly.")
+        resp.headers["Retry-After"] = "5"
+        return resp
 
     @app.exception_handler(Exception)
     async def _unhandled(request: Request, exc: Exception) -> JSONResponse:

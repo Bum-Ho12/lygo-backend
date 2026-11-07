@@ -72,6 +72,7 @@ def test_not_found_is_problem_json() -> None:
 
 def test_ready_reports_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
     from app.api.v1.routers import health
+    from app.core.config import settings
 
     async def down() -> bool:
         raise ConnectionError
@@ -80,8 +81,29 @@ def test_ready_reports_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
         return True
 
     monkeypatch.setattr(health, "check_db", down)
-    monkeypatch.setattr(health, "check_redis", up)
+    monkeypatch.setattr(health, "check_redis", down)
     r = client.get("/v1/health/ready")
-    assert r.status_code == 503 and r.json()["checks"] == {"db": False, "redis": True}
+    assert r.status_code == 503 and r.json()["checks"] == {"db": False}  # Redis is not a dependency by default
     monkeypatch.setattr(health, "check_db", up)
-    assert client.get("/v1/health/ready").status_code == 200
+    assert client.get("/v1/health/ready").json() == {"status": "ok", "checks": {"db": True}}
+    monkeypatch.setattr(settings, "ingest_mode", "celery")
+    r = client.get("/v1/health/ready")
+    assert r.status_code == 503 and r.json()["checks"] == {"db": True, "redis": False}  # only required in Celery mode
+
+
+def test_database_outage_is_a_clean_503(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Regression: with Postgres down, /auth/register returned a bare 500 with a stack trace."""
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from app.api.deps import get_factory
+
+    dead = async_sessionmaker(create_async_engine("postgresql+asyncpg://u:p@127.0.0.1:1/none"), expire_on_commit=False)
+    app.dependency_overrides[get_factory] = lambda: dead
+    try:
+        r = TestClient(app, raise_server_exceptions=False).post(
+            "/v1/auth/register", json={"email": "a@example.com", "password": "correct horse battery 42"}
+        )
+    finally:
+        app.dependency_overrides.clear()
+    assert r.status_code == 503 and r.json()["code"] == "database_unavailable" and r.headers["retry-after"] == "5"
+    assert "Traceback" not in r.text and "127.0.0.1" not in r.text  # no internals leak to the caller

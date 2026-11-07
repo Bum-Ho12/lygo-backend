@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Lygo multi-tenant legal data platform — API, ingestion, rules and AI engines"
 requires-python = ">=3.12"
 dependencies = [
-  "fastapi>=0.115",
+  "fastapi[standard]>=0.115",
   "uvicorn[standard]>=0.30",
   "pydantic[email]>=2.8",
   "pydantic-settings>=2.4",
@@ -47,6 +47,9 @@ dev = [
     "moto[s3]>=5",
     "aiosmtpd>=1.4.6",
 ]
+
+[tool.fastapi]
+entrypoint = "app.main:app"  # `uv run fastapi dev` from the repo root
 
 [tool.ruff]
 line-length = 100
