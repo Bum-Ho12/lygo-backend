@@ -562,3 +562,19 @@ async def test_matter_facts_are_firm_only(factory, database: PgConfig, world: Wo
         assert "tenancy-fact" in await ids(s, "SELECT key FROM matter_facts")
     async with tenant_session(factory, firm_ctx(world, world.firm_b, world.user_b)) as s:
         assert "tenancy-fact" not in await ids(s, "SELECT key FROM matter_facts")
+
+
+# --- fact checks: privileged work product, firm-only ------------------------------------------------------------------------
+async def test_fact_checks_are_firm_only_and_isolated(factory, database: PgConfig, world: World) -> None:  # type: ignore[no-untyped-def]
+    with psycopg.connect(database.owner_dsn(TEST_DB), autocommit=True) as c:
+        for firm, user in ((world.firm_a, world.user_a), (world.firm_b, world.user_b)):
+            fid = c.execute("INSERT INTO fact_checks (firm_id, created_by, input_text, as_at) VALUES (%s,%s,%s,'2026-01-01') RETURNING id", (firm, user, f"draft-{firm.hex[:6]}")).fetchone()[0]
+            c.execute("INSERT INTO fact_check_items (firm_id, fact_check_id, ord, kind, content, verdict) VALUES (%s,%s,0,'claim',%s,'supported')", (firm, fid, f"item-{firm.hex[:6]}"))
+    async with tenant_session(factory, firm_ctx(world, world.firm_a, world.user_a)) as s:
+        assert await ids(s, "SELECT input_text FROM fact_checks WHERE input_text LIKE 'draft-%'") == {f"draft-{world.firm_a.hex[:6]}"}
+        assert await ids(s, "SELECT content FROM fact_check_items WHERE content LIKE 'item-%'") == {f"item-{world.firm_a.hex[:6]}"}
+    client_a1 = TenantContext(firm_id=world.firm_a, user_id=world.user_a1, role="client_user", client_id=world.a1)
+    async with tenant_session(factory, client_a1) as s:  # a client must never see a firm's privileged analysis of their own file
+        assert await ids(s, "SELECT id FROM fact_checks") == set() and await ids(s, "SELECT id FROM fact_check_items") == set()
+    async with factory() as s:
+        assert (await s.execute(text("SELECT count(*) FROM fact_checks"))).scalar_one() == 0

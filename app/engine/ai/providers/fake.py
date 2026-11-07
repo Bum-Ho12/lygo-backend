@@ -15,7 +15,9 @@ class ExtractiveLLM:
 
     model = "extractive-v1"
 
-    async def generate(self, messages: list[ChatMessage], *, temperature: float = 0.0, max_tokens: int = 900) -> LlmResult:
+    async def generate(
+        self, messages: list[ChatMessage], *, temperature: float = 0.0, max_tokens: int = 900, effort: str | None = None
+    ) -> LlmResult:
         prompt = "\n".join(m.content for m in messages if m.role == "user")
         if prompt.startswith("Summarise this conversation"):
             return LlmResult("The user asked several questions about legal documents and the law.", self.model)
@@ -46,7 +48,9 @@ class ScriptedLLM:
         self.script = list(script)
         self.calls: list[list[ChatMessage]] = []
 
-    async def generate(self, messages: list[ChatMessage], *, temperature: float = 0.0, max_tokens: int = 900) -> LlmResult:
+    async def generate(
+        self, messages: list[ChatMessage], *, temperature: float = 0.0, max_tokens: int = 900, effort: str | None = None
+    ) -> LlmResult:
         self.calls.append(messages)
         item = self.script.pop(0) if self.script else "INSUFFICIENT_SOURCES"
         if isinstance(item, Exception):

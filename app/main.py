@@ -12,6 +12,7 @@ from app.api.v1.routers import (
     documents,
     firms,
     health,
+    intelligence,
     invitations,
     matters,
     members,
@@ -67,6 +68,7 @@ app.include_router(documents.router, prefix="/v1")
 app.include_router(notifications.router, prefix="/v1")
 app.include_router(search.router, prefix="/v1")
 app.include_router(ai.router, prefix="/v1")
+app.include_router(intelligence.router, prefix="/v1")
 app.include_router(storage.router, prefix="/v1")
 app.include_router(platform.router, prefix="/v1")
 # Next routers (see docs/08-api-design.md): auth, me, platform, firms, members, clients,

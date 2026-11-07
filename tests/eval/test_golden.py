@@ -1,11 +1,12 @@
 """AI evaluation harness (`make eval`). Deterministic with the built-in fake model and the hashing embedder.
 
-Run it against a real model before enabling the assistant for a firm:
-    LLM_BASE_URL=... LLM_API_KEY=... LLM_MODEL_CHAT=... EMBEDDING_MODEL=... uv run pytest tests/eval -q
+Run it against the real model before enabling the assistant for a firm (spends API credits; reads ANTHROPIC_API_KEY from .env):
+    EVAL_REAL_MODEL=1 uv run pytest tests/eval -q
 Pass thresholds below are release gates: citation accuracy, abstention correctness and advice-boundary accuracy.
 """
 import asyncio
 import math
+import os
 from pathlib import Path
 
 import pytest
@@ -15,6 +16,7 @@ from app.engine.ai.guardrails.advice import check_question
 from app.engine.ai.guardrails.citations import Source
 from app.engine.ai.guardrails.grounding import is_grounded
 from app.engine.ai.providers.factory import get_llm
+from app.engine.ai.providers.fake import ExtractiveLLM
 from app.engine.ai.settings import AiSettings
 from app.engine.orchestrator.generate import generate_verified
 from app.engine.rag.chunking.statute import chunk_statute
@@ -46,7 +48,7 @@ def retrieve(question: str, k: int = 5) -> list[Hit]:
 
 
 def run_case(case: dict) -> tuple[str, list[str], str]:  # type: ignore[type-arg]
-    llm = get_llm()
+    llm = get_llm() if os.environ.get("EVAL_REAL_MODEL") else ExtractiveLLM()  # real model only on request (it costs money)
     assert llm is not None, "no model configured"
     hits = retrieve(case["q"])
     if not is_grounded(hits, case["q"]):

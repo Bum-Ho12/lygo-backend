@@ -38,6 +38,8 @@ def build_mime(msg: EmailMessage, from_addr: str, from_name: str) -> MimeMessage
 
 
 class SmtpEmailSender:
+    delivers = True
+
     def __init__(
         self, host: str, port: int, *, username: str = "", password: str = "", security: str = "starttls", from_addr: str, from_name: str = "Lygo",
         timeout: float = 15.0, tls_context: ssl.SSLContext | None = None,

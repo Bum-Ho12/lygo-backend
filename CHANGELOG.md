@@ -21,5 +21,9 @@
 - Embeddings: Voyage AI (`voyage-law-2`) with document/query input types, batching and backoff; embedder interface gains `embed_query`.
 - Email: SMTP adapter, privacy-enforcing templates, invitation delivery status + resend, password reset and security-alert emails.
 - Auth hardening (ADR 0007): durable rate limiting/lockout, SMS OTP (phone verification + second factor), TOTP with replay protection and recovery codes, MFA enforcement for staff, password change/reset that cannot bypass MFA, session revocation.
+- Claude (Anthropic SDK) as the chat LLM: no sampling params, refusal handling, server-side fallbacks, per-task effort; verifier rebuilt from live output (headings/questions/coverage notes exempt, formatting preserved).
+- E3: fact-check (deterministic cite-check + verbatim-evidence claim-check), matter chronology, case builder.
+- Email-less mode: `email_verified_at` removed; invitation links returned to the inviter; audited platform-issued reset links.
+- Tests are hermetic (no real credentials); `EVAL_REAL_MODEL=1` runs the golden set on the real model.
 - Python/tooling managed by uv (`.python-version`, `uv.lock`).
 - CI workflow (lint, types, security scan, unit tests, tenancy job), Makefile targets.

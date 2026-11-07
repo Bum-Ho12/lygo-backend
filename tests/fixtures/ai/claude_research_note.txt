@@ -1,0 +1,33 @@
+# Notice of Claim Under the Synthetic Insurance Test Act: Time Limit and Effect of Late Notice
+
+## Issues
+
+1. What is the time limit for a claimant to notify the insurer of a claim?
+2. Can the insurer repudiate a claim because notice was late?
+
+## Relevant law
+
+- **Time limit:** "A claimant shall give notice of a claim to the insurer within sixty days of the loss." [S1]
+- **Effect of late notice:** "An insurer shall not repudiate a claim solely because notice was given late, unless it was prejudiced." [S1]
+
+## Application to the facts
+
+**1. Time limit.** The claimant must give notice within sixty days, and the period runs from the date of the loss. [S1]
+
+**2. Late notice.** Late notice does not by itself defeat a claim. The insurer may not repudiate *solely* on the ground of lateness unless it was prejudiced by the delay. [S1]
+
+- **No prejudice:** late notice alone is not a valid ground for repudiation. [S1]
+- **Prejudice shown:** the restriction in s.5(2) falls away, and lateness may support repudiation. [S1]
+
+The word "solely" suggests the provision limits reliance on lateness *as the only ground*. On the face of the text, it does not address repudiation on other grounds. [S1]
+
+## Gaps and what to verify
+
+- **Meaning of "prejudiced":** The sources do not define it or say what degree of prejudice is needed. Check for any definition section or interpretive authority.
+- **Burden of proof:** The sources do not say whether the insurer must prove prejudice or the claimant must disprove it.
+- **When the period starts:** s.5(1) says "within sixty days of the loss." [S1] The sources do not say whether this means the date the loss occurred or the date it was discovered. This matters for latent losses.
+- **Form and method of notice:** The sources set no requirements for form, content or service.
+- **Effect of policy terms:** The sources do not say whether a policy can impose a shorter period or stricter terms. Separately, s.7 bars an insurer from relying on an exclusion that was not disclosed in plain language before the policy began. [S3] If an insurer relies on a policy term about notice, consider whether s.7 applies. Whether a notice condition counts as an "exclusion" is not addressed in the sources.
+- **Case law:** The sources contain no judicial decisions on s.5. Research case law before advising.
+
+*This is a draft research note for professional review, not a final legal opinion.*

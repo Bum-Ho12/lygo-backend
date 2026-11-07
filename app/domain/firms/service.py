@@ -2,6 +2,7 @@
 import re
 import secrets
 import uuid
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 import structlog
@@ -17,8 +18,16 @@ from app.db.models.tenancy import Client, ClientMembership, Firm, FirmMembership
 from app.db.models.work import Invitation
 from app.domain.audit import service as audit
 from app.integrations.email.base import EmailError, EmailSender
+from app.integrations.email.templates import link
 
 INVITE_TTL = timedelta(days=7)
+
+
+@dataclass
+class InviteResult:
+    invitation: Invitation
+    emailed: bool  # False => nothing reached an inbox; hand `link` to the invitee yourself
+    link: str
 
 
 def _conflict(code: str, detail: str) -> ProblemError:
@@ -106,7 +115,7 @@ async def remove_member(db: AsyncSession, ctx: TenantContext, user_id: uuid.UUID
 async def create_invitation(
     db: AsyncSession, ctx: TenantContext, email: EmailSender, *, to: str, role: str, client_id: uuid.UUID | None = None,
     firm_name: str = "",
-) -> tuple[Invitation, bool]:
+) -> InviteResult:
     assert ctx.firm_id
     to = to.strip().lower()
     if client_id is None:
@@ -125,12 +134,14 @@ async def create_invitation(
     await db.flush()
     await audit.record(db, ctx, "invitation.create", target=f"invitation:{inv.id}", meta={"role": role, "client_id": str(client_id) if client_id else None})
     sent = await send_invitation_email(email, to, firm_name, token)
-    return inv, sent
+    return InviteResult(inv, sent, link("accept-invite", token=token))
 
 
 async def send_invitation_email(email: EmailSender, to: str, firm_name: str, token: str) -> bool:
-    """Returns False (and logs) if delivery failed; the invitation stays valid and can be re-sent."""
-    from app.integrations.email.templates import EmailTemplateError, link
+    """Returns False if the email was not delivered (no email channel, or a delivery failure); the invitation stays valid."""
+    if not getattr(email, "delivers", True):
+        return False  # email-less mode: the inviter receives the link in the API response instead
+    from app.integrations.email.templates import EmailTemplateError
     from app.integrations.email.templates import render as render_email
 
     safe_firm = re.sub(r"[^A-Za-z0-9 &.,'\-]", "", firm_name)[:60].strip() or "a law firm"
@@ -142,7 +153,7 @@ async def send_invitation_email(email: EmailSender, to: str, firm_name: str, tok
         return False
 
 
-async def resend_invitation(db: AsyncSession, ctx: TenantContext, email: EmailSender, invitation_id: uuid.UUID, *, firm_name: str) -> tuple[Invitation, bool]:
+async def resend_invitation(db: AsyncSession, ctx: TenantContext, email: EmailSender, invitation_id: uuid.UUID, *, firm_name: str) -> InviteResult:
     """Tokens are stored hashed, so resending issues a fresh token (the old link stops working)."""
     inv = await db.get(Invitation, invitation_id)
     if inv is None or inv.accepted_at is not None:
@@ -151,7 +162,7 @@ async def resend_invitation(db: AsyncSession, ctx: TenantContext, email: EmailSe
     inv.token_hash, inv.expires_at = hash_refresh_token(token), datetime.now(UTC) + INVITE_TTL
     await audit.record(db, ctx, "invitation.resend", target=f"invitation:{inv.id}")
     sent = await send_invitation_email(email, inv.email, firm_name, token)
-    return inv, sent
+    return InviteResult(inv, sent, link("accept-invite", token=token))
 
 
 async def accept_invitation(db: AsyncSession, user: User, token: str) -> dict[str, str | None]:

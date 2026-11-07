@@ -151,7 +151,7 @@ async def forgot_password(
     """Always answers the same way (no account enumeration). Work and email delivery happen after the response."""
     ip = client_ip(request)
     ke, ki = throttle.key("forgot-email", body.email), throttle.key("forgot-ip", ip or "unknown")
-    allowed = not await throttle.remaining(db, ke, ki)
+    allowed = not await throttle.remaining(db, ke, ki) and getattr(email, "delivers", True)  # no email channel => nothing to send
     if allowed:
         await throttle.hit(db, ke, limit=3, window=3600, lock=3600)
         await throttle.hit(db, ki, limit=20, window=3600, lock=3600)

@@ -103,7 +103,7 @@ a draft requiring advocate review. Track the final practice directions.
 - [ ] ODPC registration (processor + controller)
 - [ ] DPIA completed and signed off
 - [ ] DPA template for firms; sub-processor list published
-- [ ] Kenyan Standard Clauses with RumptyCloud, LLM provider, **Voyage AI (embeddings: receives document text)**, Thrivewave, email provider
+- [ ] Kenyan Standard Clauses with RumptyCloud, LLM provider, **Voyage AI (embeddings: receives document text)**, **Anthropic (LLM: receives matter excerpts and questions)**, Thrivewave, email provider
 - [ ] Transfer impact assessment documented
 - [ ] Consent flow for sensitive data / cross-border processing
 - [ ] Kenya Law / NCLR content licence confirmed

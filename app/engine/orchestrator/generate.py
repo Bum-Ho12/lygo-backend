@@ -6,8 +6,12 @@ from app.engine.ai.guardrails.advice import strip_directives
 from app.engine.ai.guardrails.citations import Removed, Source, verify
 from app.engine.ai.guardrails.grounding import INSUFFICIENT
 from app.engine.ai.prompts.templates import build_prompt
-from app.engine.ai.providers.base import ChatMessage, LLMProvider
+from app.engine.ai.providers.base import ChatMessage, LLMProvider, LlmRefused
 from app.engine.ai.settings import AiSettings
+
+# Reasoning depth is the latency/cost dial on Claude 5.x. Explaining a document to a client or summarising needs little; research and
+# case building need more. Tasks not listed use the provider default (ANTHROPIC_EFFORT).
+EFFORT_BY_TASK = {"explain": "low", "summarise": "low", "research": "medium", "case_build": "high", "fact_check": "medium"}
 
 _RETRY_NOTE = (
     "Your previous answer contained statements the sources do not support. Answer again using ONLY the sources, cite every "
@@ -42,7 +46,12 @@ async def generate_verified(
     note = extra_instruction
     for attempt in (1, 2):
         built = build_prompt(task, audience, question, sources, ai, history=history, facts=facts, summary=summary, extra_instruction=note)
-        res = await llm.generate(built.messages)
+        try:
+            res = await llm.generate(built.messages, effort=EFFORT_BY_TASK.get(task))
+        except LlmRefused as exc:  # provider safeguards declined: abstain (never retry the same text, never show partial output)
+            out.attempts, out.prompt_version = attempt, built.version
+            out.abstain_reason = f"model_refused:{exc.category or 'unspecified'}"
+            return out
         out.attempts, out.model, out.prompt_version = attempt, res.model, built.version
         out.prompt_tokens += res.prompt_tokens
         out.completion_tokens += res.completion_tokens
@@ -52,7 +61,7 @@ async def generate_verified(
             return out
         v = verify(res.text, sources)
         out.removed = v.removed
-        dropped_most = len(v.removed) > len(v.text.split(". ")) + 1
+        dropped_most = len(v.removed) > max(2, v.kept_sentences)  # more thrown away than kept => the answer was mostly unsupported
         if v.ok and not dropped_most:
             text, n = strip_directives(v.text) if audience == "client" else (v.text, 0)
             out.directives_removed = n

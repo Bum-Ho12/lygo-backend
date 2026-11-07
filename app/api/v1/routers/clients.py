@@ -96,7 +96,10 @@ async def invite_portal_user(
 ) -> dict[str, str | bool]:
     await get_or_404(db, Client, client_id, "client")
     firm = await db.get(Firm, ctx.firm_id)
-    inv, sent = await firm_service.create_invitation(
+    r = await firm_service.create_invitation(
         db, ctx, email, to=body.email, role=body.role, client_id=client_id, firm_name=firm.name if firm else ""
     )
-    return {"id": str(inv.id), "email": inv.email, "role": inv.role, "email_sent": sent}
+    out: dict[str, str | bool] = {"id": str(r.invitation.id), "email": r.invitation.email, "role": r.invitation.role, "email_sent": r.emailed}
+    if not r.emailed:
+        out["invite_link"] = r.link  # email-less mode: the firm shares this with its client directly
+    return out
