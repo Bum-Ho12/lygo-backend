@@ -29,6 +29,16 @@ pgvector / vector DB endpoint and Lygo queries it per request.
 > **Status:** the S3-compatible BYO adapter, encrypted credentials, probes, residency capture and a firm-level primary destination are
 > implemented (see [14](14-implementation-plan.md)). Per-artefact policies (`storage_policies`), exports and the other adapters are not yet.
 
+## Endpoint safety (SSRF)
+A firm-supplied bucket endpoint makes Lygo's servers open a connection where the firm says. Outside local development
+(`app/storage/endpoint_guard.py`) the endpoint must be `https://`, must not embed credentials or a path, and must resolve
+only to public addresses (no loopback, private, link-local/metadata, CGNAT, multicast). It is checked when the destination is
+saved (422 `endpoint_not_allowed`) and again whenever it is used (DNS can change). The S3 client still resolves the name
+itself, so production must also block API egress to private ranges at the network level.
+
+No silent fallback: if a firm's primary bucket is unreachable, uploads fail with a retryable 503 rather than being stored in
+Lygo-managed storage behind the firm's back (residency). The firm can switch to Lygo storage at any time.
+
 ## Adapters — `app/storage/adapters`
 
 Common interface (`app/storage/base.py`):

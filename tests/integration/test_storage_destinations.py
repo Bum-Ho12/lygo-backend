@@ -135,3 +135,25 @@ async def test_crypto_shredding_makes_byo_data_unreachable(api, database: PgConf
         assert up.status_code == 503  # fails closed: nothing is written anywhere
         assert (await api.post(f"{base}/storage-destinations/{dest['id']}/test", headers=owner)).json()["health"]["ok"] is False
         assert uuid.UUID(dest["id"])
+
+
+async def test_internal_network_endpoints_are_refused(api, database: PgConfig, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """SSRF: a firm owner must not be able to make Lygo's servers connect to Lygo's own network."""
+    from app.core.config import settings
+    from app.storage import endpoint_guard
+
+    monkeypatch.setattr(settings, "storage_block_private_endpoints", True)  # enforce the production rule in this local test
+    firm, owner, cid = await owner_and_client(api, database)
+    base = f"/v1/firms/{firm}"
+    for endpoint in ("http://169.254.169.254", "https://127.0.0.1:5432", "https://user:pw@s3.example.com"):
+        r = await api.post(f"{base}/storage-destinations", json=body("firm-bucket", endpoint_url=endpoint), headers=owner)
+        assert r.status_code == 422 and r.json()["code"] == "endpoint_not_allowed", (endpoint, r.text)
+    # a name that resolved to a public address when saved but points inside later (DNS change) is refused at use time
+    monkeypatch.setattr(endpoint_guard, "_addresses", lambda host, port: ["52.95.110.1"])
+    dest = (await api.post(f"{base}/storage-destinations", json=body("firm-bucket", endpoint_url="https://s3.rebind.example"), headers=owner)).json()
+    owner_sql(database, "UPDATE storage_destinations SET is_primary=true, health='{\"ok\": true}' WHERE id=%s", dest["id"])
+    monkeypatch.setattr(endpoint_guard, "_addresses", lambda host, port: ["10.0.0.7"])
+    probed = (await api.post(f"{base}/storage-destinations/{dest['id']}/test", headers=owner)).json()
+    assert probed["health"]["ok"] is False and "not allowed" in probed["health"]["detail"]
+    r = await upload_client(api, firm, cid, owner)
+    assert r.status_code == 503 and r.json()["code"] == "storage_unavailable"  # never connected; firm told to retry/fix

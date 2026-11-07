@@ -14,6 +14,7 @@ from app.db.models.documents import Document
 from app.db.models.storage import StorageDestination as Row
 from app.db.models.tenancy import Firm
 from app.domain.audit import service as audit
+from app.storage.endpoint_guard import EndpointNotAllowed, check_endpoint
 from app.storage.resolver import CRED_PURPOSE, StorageResolver
 
 
@@ -35,6 +36,10 @@ async def create_destination(
             422, "transfer_basis_required", "Transfer basis required",
             "Storing data outside Kenya is a cross-border transfer: record the legal basis (e.g. safeguards/consent) in transfer_basis.",
         )
+    try:
+        await check_endpoint(endpoint_url)
+    except EndpointNotAllowed as exc:
+        raise ProblemError(422, "endpoint_not_allowed", "Endpoint not allowed", str(exc)) from exc
     dek = await ensure_dek(db, ctx.firm_id, keys)
     blob = encrypt_secret(keys, dek, ctx.firm_id, CRED_PURPOSE, json.dumps({"access_key": access_key, "secret_key": secret_key}).encode())
     row = Row(
