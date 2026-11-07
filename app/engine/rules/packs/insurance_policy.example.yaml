@@ -1,0 +1,35 @@
+# Example rule pack — must be reviewed by an advocate before production use.
+pack: insurance_policy
+version: 0.1.0
+practice_area: insurance
+doc_types: [insurance_policy]
+
+rules:
+  - id: ins.exclusion.pre_existing
+    severity: warning
+    when:
+      clause_matches: ["pre-existing condition", "pre existing illness"]
+    title: Pre-existing conditions excluded
+    explain: >
+      This policy excludes conditions you had before it started. Claims linked to
+      those conditions may be refused.
+
+  - id: ins.claim.notice_window
+    severity: critical
+    when:
+      clause_matches: ["notify .* within (\\d+) days", "notice of claim .* (\\d+) days"]
+    extract:
+      deadline_days: "$1"
+    title: Short deadline to report a claim
+    explain: >
+      You must tell the insurer about a claim within {deadline_days} days. Missing this
+      window can be used to reject the claim.
+
+  - id: ins.missing.policy_schedule
+    severity: caution
+    when:
+      section_absent: ["schedule", "policy schedule"]
+    title: Policy schedule not found
+    explain: >
+      The schedule (the page listing your cover, limits and premium) seems to be missing.
+      Ask the insurer or your advocate for a complete copy.

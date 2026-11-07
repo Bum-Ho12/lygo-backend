@@ -1,0 +1,12 @@
+-- Local only. Creates the extension and a non-owner application role so RLS is enforced.
+CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'lygo_app') THEN
+    CREATE ROLE lygo_app LOGIN PASSWORD 'lygo_app' NOBYPASSRLS;
+  END IF;
+END $$;
+GRANT CONNECT ON DATABASE lygo TO lygo_app;
+GRANT USAGE ON SCHEMA public TO lygo_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO lygo_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO lygo_app;
