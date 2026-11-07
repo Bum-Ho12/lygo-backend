@@ -27,6 +27,19 @@ from app.core.logging import configure_logging
 
 configure_logging(settings.log_level, json_logs=not settings.is_local)
 
+
+def _log_config_summary() -> None:
+    """One line at startup saying which external integrations are live, so a silent fallback is visible immediately."""
+    from app.integrations.sms import factory as sms_factory
+
+    structlog.get_logger().info(
+        "config.loaded", env=settings.app_env, env_file_found=(settings.model_config["env_file"]).exists(),  # type: ignore[union-attr]
+        sms=sms_factory.describe(), llm="anthropic" if settings.anthropic_api_key else "none/local", email="smtp" if settings.smtp_host else "disabled",
+    )
+
+
+_log_config_summary()
+
 app = FastAPI(
     title="Lygo API",
     version="0.1.0",

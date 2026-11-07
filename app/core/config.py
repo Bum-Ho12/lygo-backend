@@ -1,13 +1,16 @@
+from pathlib import Path
 from typing import Annotated
 
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 _INSECURE_SECRETS = {"", "change-me"}
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    # Absolute path: .env must load no matter which directory the server is started from (e.g. `cd app && fastapi dev`).
+    model_config = SettingsConfigDict(env_file=PROJECT_ROOT / ".env", extra="ignore")
 
     app_env: str = "local"  # local | staging | production
     log_level: str = "INFO"
@@ -97,6 +100,12 @@ class Settings(BaseSettings):
     @classmethod
     def split_origins(cls, v: str | list[str]) -> list[str]:
         return [o.strip() for o in v.split(",")] if isinstance(v, str) else v
+
+    @field_validator("storage_local_dir")
+    @classmethod
+    def anchor_storage_dir(cls, v: str) -> str:
+        p = Path(v)
+        return str(p if p.is_absolute() else PROJECT_ROOT / p)  # same reason: never depend on the working directory
 
     @model_validator(mode="after")
     def require_mfa_in_production(self) -> "Settings":

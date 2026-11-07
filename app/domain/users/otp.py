@@ -62,7 +62,8 @@ async def deliver(provider: SmsProvider | None, destination: str, code: str) -> 
         raise ProblemError(503, "sms_unavailable", "SMS unavailable", "Text-message codes are not available right now. Use another method.")
     _, text_body = render("otp", {"code": code, "minutes": str(settings.otp_ttl_seconds // 60)})
     try:
-        await provider.send(destination, text_body, sender_id=settings.thrivewave_sender_id or None, callback_url=None)
+        result = await provider.send(destination, text_body, sender_id=settings.thrivewave_sender_id or None, callback_url=None)
+        log.info("otp.sms_accepted", to=mask(destination), transaction_id=result.provider_message_id, recipients=result.recipients)
     except SmsUncertain:
         log.warning("otp.sms_uncertain", to=mask(destination))  # may still arrive; the user can request another (rate limited)
     except SmsAuthError as exc:

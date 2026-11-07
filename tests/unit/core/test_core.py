@@ -107,3 +107,26 @@ def test_database_outage_is_a_clean_503(monkeypatch: pytest.MonkeyPatch) -> None
         app.dependency_overrides.clear()
     assert r.status_code == 503 and r.json()["code"] == "database_unavailable" and r.headers["retry-after"] == "5"
     assert "Traceback" not in r.text and "127.0.0.1" not in r.text  # no internals leak to the caller
+
+
+def test_env_file_is_found_regardless_of_working_directory(tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """Regression: started from app/ (`cd app && fastapi dev main.py`), .env was not loaded, so Thrivewave silently fell back
+    to the console sender and OTP SMS were never sent."""
+    from pathlib import Path
+
+    from app.core import config
+
+    env_file = Settings.model_config["env_file"]
+    assert isinstance(env_file, Path) and env_file.is_absolute() and env_file == config.PROJECT_ROOT / ".env"
+    monkeypatch.chdir(tmp_path)  # a directory with no .env at all
+    probe = tmp_path / "probe.env"
+    probe.write_text("THRIVEWAVE_BASE_URL=https://sms.example.test\nTHRIVEWAVE_API_KEY=k\n")
+    monkeypatch.setattr(config, "PROJECT_ROOT", tmp_path)
+    s = Settings(_env_file=probe)
+    assert s.thrivewave_base_url == "https://sms.example.test" and s.thrivewave_api_key == "k"
+    assert Path(Settings().storage_local_dir).is_absolute()  # relative storage paths are anchored too
+
+
+def test_request_ids_are_not_mangled_by_pii_masking() -> None:
+    ev = pii_processor(None, "info", {"event": "x", "request_id": "5a8503b718ef4fa7b2a12345678d92f9", "to": "0712345678"})
+    assert ev["request_id"] == "5a8503b718ef4fa7b2a12345678d92f9" and "0712345678" not in ev["to"]
