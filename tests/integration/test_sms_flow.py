@@ -144,6 +144,17 @@ async def test_sweeper_sends_due_notifications_across_firms(factory, database: P
     assert (await row(factory, f1, n1)).status == "sent" and (await row(factory, f2, n2)).status == "sent"
 
 
+async def test_one_unsendable_notification_does_not_stop_the_sweep(factory, database: PgConfig) -> None:  # type: ignore[no-untyped-def]
+    """Regression: a queued row with no recipient used to hit an assert and abort send_due, so no firm's messages went out."""
+    f1, f2 = new_firm(database), new_firm(database)
+    bad, good = await queue(factory, f1, now=NOON), await queue(factory, f2, now=NOON)
+    owner_sql(database, "UPDATE notifications SET recipient = '' WHERE id = %s", bad)
+    owner_sql(database, "UPDATE notifications SET deliver_after = now() - interval '1 minute' WHERE id IN (%s, %s)", bad, good)
+    await service.send_due(factory, ScriptedProvider())
+    assert (await row(factory, f1, bad)).status == "failed"
+    assert (await row(factory, f2, good)).status == "sent"
+
+
 async def test_validation_and_quota(factory, database: PgConfig, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     firm = new_firm(database)
     for kwargs in ({"to": "not-a-phone"}, {"template": "nope"}, {"params": {"firm": "Case: X v Y denied"}}):

@@ -90,8 +90,12 @@ class Worker:
             claimed = True
             t = asyncio.create_task(self._execute(job))
             self._tasks.add(t)
-            t.add_done_callback(lambda done: (self._tasks.discard(done), self._wake.set()))
+            t.add_done_callback(self._task_done)
         return claimed
+
+    def _task_done(self, done: "asyncio.Task[None]") -> None:
+        self._tasks.discard(done)
+        self._wake.set()  # a slot freed up: look for more work now
 
     async def _execute(self, job: Job) -> None:
         hb = asyncio.create_task(self._heartbeat(job))
@@ -127,6 +131,8 @@ class Worker:
             conn = await self.engine.connect()
             raw = await conn.get_raw_connection()
             driver = raw.driver_connection
+            if driver is None:
+                raise RuntimeError("no driver connection")  # handled below: fall back to polling
             await driver.add_listener(jobs.NOTIFY_CHANNEL, lambda *_: self._wake.set())
             return conn, driver
         except Exception as exc:  # noqa: BLE001 - polling still works without it
