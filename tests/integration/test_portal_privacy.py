@@ -70,3 +70,12 @@ async def test_client_search_ignores_documents_the_firm_has_not_finished(api, da
     owner_sql(database, "UPDATE documents SET status='needs_review' WHERE id=%s", doc["id"])
     assert doc["id"] not in [x["citation"]["source_id"] for x in (await api.post(f"{base}/search", json=q, headers=ph)).json()]
     assert doc["id"] in [x["citation"]["source_id"] for x in (await api.post(f"{base}/search", json=q, headers=adv)).json()]  # firm unaffected
+
+
+async def test_me_says_whether_someone_is_platform_staff(api, database: PgConfig) -> None:  # type: ignore[no-untyped-def]
+    from tests.integration.helpers import make_user
+
+    uid, h, _ = await make_user(api, "me-role")
+    assert (await api.get("/v1/me", headers=h)).json()["platform_role"] is None
+    owner_sql(database, "UPDATE users SET platform_role='platform_support' WHERE id=%s", uid)
+    assert (await api.get("/v1/me", headers=h)).json()["platform_role"] == "platform_support"

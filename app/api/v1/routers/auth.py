@@ -87,6 +87,7 @@ class UserOut(BaseModel):
     email: str
     name: str
     locale: str
+    platform_role: str | None = None  # lets the UI show the platform console without probing an admin-only endpoint
 
 
 @router.post("/auth/register", status_code=201, response_model=UserOut)
@@ -173,7 +174,7 @@ async def reset_password(body: ResetIn, db: Db, email: Annotated[EmailSender, De
 async def me(user_id: UserId, db: Db) -> UserOut:
     user = await db.get(User, user_id)
     assert user is not None
-    return UserOut(id=str(user.id), email=user.email, name=user.name, locale=user.locale)
+    return UserOut(id=str(user.id), email=user.email, name=user.name, locale=user.locale, platform_role=user.platform_role)
 
 
 @router.get("/me/memberships")
