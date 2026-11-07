@@ -1,0 +1,22 @@
+THE SYNTHETIC INSURANCE TEST ACT (NOT REAL LAW - TEST FIXTURE)
+
+PART I - PRELIMINARY
+
+1. Short title.
+This Act may be cited as the Synthetic Insurance Test Act.
+
+2. Interpretation.
+(1) In this Act, "insurer" means a company licensed to underwrite policies of insurance.
+(2) "claimant" means a person who makes a claim under a policy.
+
+PART II - CLAIMS
+
+5. Notice of claim.
+(1) A claimant shall give notice of a claim to the insurer within sixty days of the loss.
+(2) An insurer shall not repudiate a claim solely because notice was given late, unless it was prejudiced.
+
+6. Payment of claims.
+An insurer shall pay a settled claim within ninety days of settlement.
+
+7. Exclusions must be disclosed.
+An insurer shall not rely on an exclusion unless it was disclosed to the insured in plain language before the policy began.

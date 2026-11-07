@@ -1,19 +1,33 @@
-.PHONY: dev test tenancy eval lint migrate
+.PHONY: setup dev test unit tenancy eval lint fix migrate db-up
+# All commands run inside the uv-managed environment (Python pinned in .python-version).
+RUN = uv run
+
+setup:
+	uv sync
 
 dev:
-	uvicorn app.main:app --reload
+	$(RUN) uvicorn app.main:app --reload
 
 test:
-	pytest
+	$(RUN) pytest
+
+unit:
+	$(RUN) pytest tests/unit
 
 tenancy:
-	pytest tests/tenancy
+	REQUIRE_DB=1 $(RUN) pytest tests/tenancy tests/integration
 
 eval:
-	pytest tests/eval
+	$(RUN) pytest tests/eval
 
 lint:
-	ruff check app tests && mypy app
+	$(RUN) ruff check app tests && $(RUN) mypy app
+
+fix:
+	$(RUN) ruff check app tests --fix
 
 migrate:
-	alembic upgrade head
+	$(RUN) alembic upgrade head   # uses DATABASE_MIGRATOR_URL (owner role)
+
+db-up:
+	docker compose up -d db redis minio

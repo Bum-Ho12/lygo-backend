@@ -16,7 +16,10 @@
 - Architecture changes: add an ADR in `docs/adr/`.
 
 ## Local commands
+Tooling is managed by [uv](https://docs.astral.sh/uv/): `uv sync` installs the pinned Python and dependencies;
+add packages with `uv add <pkg>` (or `uv add --dev <pkg>`) and commit `uv.lock`.
 ```bash
+make setup      # uv sync
 make dev        # run API with reload
 make test       # all tests
 make tenancy    # isolation tests only

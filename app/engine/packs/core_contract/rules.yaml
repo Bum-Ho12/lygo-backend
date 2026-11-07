@@ -1,0 +1,62 @@
+# Draft rule pack for common contract risks. Must be reviewed by an advocate before production use.
+rules:
+  - id: core.termination.missing
+    severity: caution
+    when:
+      clause_absent: ["\\bterminat(e|ion)\\b"]
+    title: No termination clause found
+    explain: >
+      The document does not appear to say how or when it can be ended. Without this, ending the
+      agreement may be difficult or lead to a dispute.
+
+  - id: core.governing_law.missing
+    severity: caution
+    when:
+      clause_absent: ["governing law", "governed by the laws? of", "laws of kenya"]
+    title: Governing law not stated
+    explain: >
+      The document does not say which country's law applies. This can make disputes harder to resolve.
+
+  - id: core.auto_renewal
+    severity: warning
+    when:
+      clause_matches: ["automatically (renew|extend)", "auto-?renew", "renew(s|ed)? automatically"]
+    title: Automatic renewal
+    explain: >
+      This agreement renews by itself unless you act. Check how much notice is needed to stop it.
+
+  - id: core.indemnity
+    severity: warning
+    when:
+      clause_matches: ["\\bindemnif(y|ies|ied|ication)\\b", "hold harmless"]
+    title: Indemnity obligation
+    explain: >
+      One party promises to cover the other's losses in certain situations. This can create large
+      financial exposure; check its scope and any cap.
+
+  - id: core.liability.unlimited
+    severity: warning
+    when:
+      clause_matches: ["unlimited liability", "liability (shall )?not (be )?limited", "no limit(ation)? (on|of) liability"]
+    title: Unlimited liability
+    explain: >
+      Liability appears not to be capped. You could be responsible for losses of any size.
+
+  - id: core.notice_period
+    severity: caution
+    when:
+      clause_matches: ["(\\d+) days'? (written )?notice", "notice of (\\d+) days"]
+    extract:
+      notice_days: "$1"
+    title: Notice period applies
+    explain: >
+      A notice period of {notice_days} days is mentioned. Missing it can affect your rights; add it
+      to your calendar.
+
+  - id: core.exclusive_jurisdiction
+    severity: info
+    when:
+      clause_matches: ["exclusive jurisdiction", "submit to the jurisdiction"]
+    title: Court jurisdiction fixed
+    explain: >
+      Disputes must be brought in the courts named in the agreement, which may be inconvenient or costly.

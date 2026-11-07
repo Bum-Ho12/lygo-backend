@@ -4,7 +4,7 @@ Decisions and facts we still need. Update this file as they are resolved.
 
 | # | Question | Owner | Why it matters |
 |---|---|---|---|
-| 1 | Which practice area launches first — immigration or insurance? | Founders | Drives corpus, rule pack, pilot firms |
+| 1 | ~~Which practice area launches first?~~ **Resolved:** general-purpose toolkit with installable packs; `core_contract` and `insurance` first. Open: which third pack? | Founders | Drives corpus, pack review capacity, pilot firms |
 | 2 | Thrivewave API docs, DLR format, sender ID process, DPA terms | Engineering | No public docs found; adapter is a placeholder |
 | 3 | RumptyCloud SLA, backups, data retention for AI inference, DPA / Kenyan Standard Clauses | Founders + Eng | Single region in Lagos; cross-border transfer obligations |
 | 4 | Kenya-resident option: which Kenyan provider for BYO / hybrid? | Founders | Firms with strict residency needs |

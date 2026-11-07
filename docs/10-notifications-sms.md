@@ -10,30 +10,31 @@
 
 ## Integration design
 
-`app/integrations/sms/` defines a provider interface so Thrivewave can be swapped or a fallback
-added without touching business code:
+`app/integrations/sms/` defines a provider interface so Thrivewave (ThriveVas) can be swapped or a fallback added
+without touching business code. Provider facts, verified against https://docs.thrivevas.com/ and the live API, are in
+[`THRIVEWAVE.md`](../app/integrations/sms/THRIVEWAVE.md).
 
 ```python
 class SmsProvider(Protocol):
-    async def send(self, to: str, text: str, *, sender_id: str, idempotency_key: str) -> SmsResult: ...
-    async def balance(self) -> Decimal: ...
-    def verify_dlr_signature(self, headers: Mapping[str, str], body: bytes) -> bool: ...
+    async def send(self, to: str, text: str, *, sender_id: str | None = None, callback_url: str | None = None) -> SmsResult: ...
 ```
 
-`thrivewave.py` implements it. Requirements for the adapter:
+What the provider's API shapes about our design (it differs from the original placeholder):
 
-- Phone numbers normalised to E.164 (`+2547XXXXXXXX`, `+2541XXXXXXXX`).
-- Sent via a Celery queue (`sms`) with retries and an idempotency key so retries never double-send.
-- Delivery reports received at `POST /v1/integrations/thrivewave/delivery-reports` and stored on
-  `notifications.status`.
-- Per-firm SMS quotas and usage metering (SMS cost is passed through on billing).
-- Optional firm-specific sender ID (firm's registered alphanumeric sender ID) or Lygo default.
-
-> **Action needed:** we could not find public Thrivewave API documentation in our research.
-> Before implementing, get from Thrivewave: base URL, auth method, send/bulk endpoints,
-> DLR webhook format and signing, sender ID registration process, rate limits, sandbox access,
-> and their data-processing terms (they become a sub-processor). Record answers in
-> `app/integrations/sms/THRIVEWAVE.md`.
+- **No idempotency key.** One recipient per request; the notification row is *claimed* (`queued -> sending`) atomically before
+  the HTTP call; only definite non-delivery (connection refused, 429, 503) is retried (backoff 1 s, 2 s, max 3 attempts);
+  timeouts/5xx end as `uncertain` and are **never** auto-retried (a retry could double-send).
+- **Unsigned delivery reports.** Each message's `callback_url` carries a derived per-message secret
+  (`/v1/integrations/thrivewave/delivery-reports/{token}`, only its hash is stored). A report is applied only if the token,
+  the `transaction_id` and the recipient number all match, only moves non-terminal messages, and unknown tokens get a 404.
+  This is weaker than signing; ask Thrivewave for signed callbacks.
+- **No balance API**: quotas are metered on our side (`SMS_MONTHLY_QUOTA` per firm; excess returns 429).
+- **API key may expire**: 401/428 fails the message fast with a clear error and an error log to rotate the key.
+- Statuses: `queued -> sending -> sent -> delivered | failed`, plus `uncertain`. Once terminal, the recipient number and message text
+  are erased (data minimisation); the masked number is kept for the audit view (`GET /firms/{id}/notifications`, admins only).
+- Phone numbers are normalised to E.164 (`+2547XXXXXXXX`, `+2541XXXXXXXX`); only Kenyan mobile numbers are accepted for now.
+- Delivery runs inline or on the `sms` Celery queue; messages held by quiet hours are released by `send_due` (run it from
+  Celery beat, not yet scheduled).
 
 ## Content rules (privacy)
 

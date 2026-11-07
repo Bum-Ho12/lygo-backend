@@ -26,6 +26,9 @@ Note: semantic search needs an index somewhere. Options are (a) Lygo keeps the v
 (chunk text can be encrypted with a firm key), or (b) Enterprise: firm provides its own
 pgvector / vector DB endpoint and Lygo queries it per request.
 
+> **Status:** the S3-compatible BYO adapter, encrypted credentials, probes, residency capture and a firm-level primary destination are
+> implemented (see [14](14-implementation-plan.md)). Per-artefact policies (`storage_policies`), exports and the other adapters are not yet.
+
 ## Adapters — `app/storage/adapters`
 
 Common interface (`app/storage/base.py`):

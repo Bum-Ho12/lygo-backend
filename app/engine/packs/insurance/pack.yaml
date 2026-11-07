@@ -1,0 +1,6 @@
+id: insurance
+title: Insurance policies
+practice_area: insurance
+version: 0.1.0
+doc_types: [insurance_policy]
+reviewed_by: ""   # DRAFT: must be signed off by an advocate before production use

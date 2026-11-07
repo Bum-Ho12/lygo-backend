@@ -6,7 +6,7 @@ requires-python = ">=3.12"
 dependencies = [
   "fastapi>=0.115",
   "uvicorn[standard]>=0.30",
-  "pydantic>=2.8",
+  "pydantic[email]>=2.8",
   "pydantic-settings>=2.4",
   "sqlalchemy[asyncio]>=2.0",
   "asyncpg>=0.29",
@@ -29,10 +29,21 @@ dependencies = [
   "pyyaml>=6.0",
   "structlog>=24.1",
   "opentelemetry-sdk>=1.26",
+  "cryptography>=50.0.2",
 ]
 
-[project.optional-dependencies]
-dev = ["pytest>=8", "pytest-asyncio>=0.23", "testcontainers>=4.7", "ruff>=0.6", "mypy>=1.11", "bandit>=1.7", "pip-audit>=2.7"]
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.23",
+    "testcontainers>=4.7",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "bandit>=1.7",
+    "pip-audit>=2.7",
+    "types-PyYAML>=6.0",
+    "moto[s3]>=5",
+]
 
 [tool.ruff]
 line-length = 100
@@ -40,6 +51,7 @@ target-version = "py312"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 
 [build-system]
@@ -48,3 +60,14 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["app*"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = false
+
+[[tool.mypy.overrides]]
+module = ["celery", "celery.*", "boto3", "botocore", "botocore.*", "pytesseract", "pymupdf", "docx", "moto", "moto.*"]
+ignore_missing_imports = true
+
+[tool.setuptools.package-data]
+app = ["engine/packs/**/*.yaml"]
