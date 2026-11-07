@@ -201,3 +201,59 @@ async def test_firm_only_and_public_scope_policies(factory, database: PgConfig, 
         assert await ids(s, "SELECT v FROM scratch_chunks") == {"law", "a1doc"}  # public + own client only
     async with tenant_session(factory, firm_ctx(world, world.firm_b, world.user_b)) as s:
         assert await ids(s, "SELECT v FROM scratch_chunks") == {"law", "b1doc"}
+
+
+# --- Phase B tables: deadlines, tasks, invitations -----------------------------------------------
+@pytest.fixture(scope="session")
+def phase_b_rows(database: PgConfig, world: World):  # type: ignore[no-untyped-def]
+    """One matter-bound deadline, task and invitation per firm, seeded as owner."""
+    with psycopg.connect(database.owner_dsn(TEST_DB), autocommit=True) as c:
+        for firm, client in ((world.firm_a, world.a1), (world.firm_b, world.b1)):
+            mid = c.execute("SELECT id FROM matters WHERE client_id=%s LIMIT 1", (client,)).fetchone()[0]
+            c.execute(
+                "INSERT INTO deadlines (firm_id, client_id, matter_id, title, due_at) VALUES (%s,%s,%s,%s, now())",
+                (firm, client, mid, f"dl-{firm.hex[:6]}"),
+            )
+            c.execute("INSERT INTO tasks (firm_id, client_id, title) VALUES (%s,%s,%s)", (firm, client, f"task-{firm.hex[:6]}"))
+            c.execute(
+                "INSERT INTO invitations (firm_id, email, role, token_hash, expires_at) VALUES (%s,%s,'advocate',%s, now()+interval '1 day')",
+                (firm, f"inv-{firm.hex[:6]}@example.com", f"hash-{firm.hex}"),
+            )
+
+
+async def test_deadlines_follow_client_isolation_tasks_and_invitations_are_firm_only(factory, world: World, phase_b_rows) -> None:  # type: ignore[no-untyped-def]
+    firm_a = firm_ctx(world, world.firm_a, world.user_a)
+    client_a1 = TenantContext(firm_id=world.firm_a, user_id=world.user_a1, role="client_user", client_id=world.a1)
+    async with tenant_session(factory, firm_a) as s:
+        assert len(await ids(s, "SELECT id FROM deadlines")) >= 1
+        assert await ids(s, "SELECT DISTINCT firm_id FROM tasks") == {world.firm_a}
+        assert await ids(s, "SELECT DISTINCT firm_id FROM invitations") == {world.firm_a}
+    async with tenant_session(factory, client_a1) as s:
+        assert await ids(s, "SELECT DISTINCT client_id FROM deadlines") == {world.a1}  # own client's only
+        assert await ids(s, "SELECT id FROM tasks") == set()
+        assert await ids(s, "SELECT id FROM invitations") == set()
+
+
+async def test_invitation_token_policy_exposes_only_the_presented_hash(factory, world: World, phase_b_rows) -> None:  # type: ignore[no-untyped-def]
+    async with factory() as s, s.begin():  # invitee: no tenant context at all
+        assert await ids(s, "SELECT email FROM invitations") == set()
+        await s.execute(text("SELECT set_config('app.invite_token_hash', :h, true)"), {"h": f"hash-{world.firm_b.hex}"})
+        assert await ids(s, "SELECT firm_id FROM invitations") == {world.firm_b}  # exactly one row
+    async with factory() as s, s.begin():
+        assert await ids(s, "SELECT email FROM invitations") == set()  # setting was transaction-local
+
+
+async def test_platform_may_insert_but_not_read_invitations(factory, world: World) -> None:  # type: ignore[no-untyped-def]
+    ctx = TenantContext(firm_id=None, user_id=world.platform_user, role="platform_admin")
+    async with tenant_session(factory, ctx) as s:
+        await s.execute(
+            text("INSERT INTO invitations (firm_id, email, role, token_hash, expires_at) VALUES (:f,'o@example.com','firm_owner',:h, now()+interval '1 day')"),
+            {"f": world.firm_a, "h": f"plat-{uuid.uuid4().hex}"},
+        )
+        assert (await s.execute(text("SELECT count(*) FROM invitations"))).scalar_one() == 0
+    with pytest.raises(DBAPIError, match="row-level security"):  # a firm member cannot invite into another firm
+        async with tenant_session(factory, firm_ctx(world, world.firm_a, world.user_a)) as s:
+            await s.execute(
+                text("INSERT INTO invitations (firm_id, email, role, token_hash, expires_at) VALUES (:f,'o@example.com','x',:h, now())"),
+                {"f": world.firm_b, "h": f"forged-{uuid.uuid4().hex}"},
+            )

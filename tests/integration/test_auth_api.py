@@ -2,51 +2,24 @@
 import uuid
 from datetime import timedelta
 
-import psycopg
 import pytest
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlalchemy.pool import NullPool
+from httpx import AsyncClient
 
-from app.api.deps import get_factory
 from app.core.security import create_access_token
-from app.main import app
-from tests.conftest import TEST_DB, PgConfig, World
+from tests.conftest import PgConfig, World
+from tests.integration.helpers import PASSWORD, firm_member, owner_sql
+from tests.integration.helpers import make_user as _make_user
 
 pytestmark = pytest.mark.asyncio
-PASSWORD = "correct horse battery 42"
 
 
-@pytest.fixture
-async def api(database: PgConfig):  # type: ignore[no-untyped-def]
-    engine = create_async_engine(database.app_url, poolclass=NullPool)
-    factory = async_sessionmaker(engine, expire_on_commit=False)
-    app.dependency_overrides[get_factory] = lambda: factory
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-        yield c
-    app.dependency_overrides.clear()
-    await engine.dispose()
-
-
-def owner_sql(pg: PgConfig, sql: str, *params):  # type: ignore[no-untyped-def]
-    with psycopg.connect(pg.owner_dsn(TEST_DB), autocommit=True) as c:
-        cur = c.execute(sql, params)
-        return cur.fetchall() if cur.description else None
-
-
-async def make_user(api: AsyncClient, tag: str) -> tuple[uuid.UUID, dict[str, str]]:
-    email = f"{tag}-{uuid.uuid4().hex[:8]}@example.com"
-    r = await api.post("/v1/auth/register", json={"email": email, "password": PASSWORD})
-    assert r.status_code == 201, r.text
-    uid = uuid.UUID(r.json()["id"])
-    t = await api.post("/v1/auth/login", json={"email": email, "password": PASSWORD})
-    assert t.status_code == 200, t.text
-    return uid, {"Authorization": f"Bearer {t.json()['access_token']}"}
+async def make_user(api: AsyncClient, tag: str):  # type: ignore[no-untyped-def]
+    uid, headers, _ = await _make_user(api, tag)
+    return uid, headers
 
 
 async def member(api, pg: PgConfig, world: World, firm: uuid.UUID, role: str):  # type: ignore[no-untyped-def]
-    uid, headers = await make_user(api, role)
-    owner_sql(pg, "INSERT INTO firm_memberships (firm_id, user_id, role) VALUES (%s, %s, %s)", firm, uid, role)
+    uid, headers, _ = await firm_member(api, pg, firm, role)
     return uid, headers
 
 

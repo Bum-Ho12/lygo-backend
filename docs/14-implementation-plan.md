@@ -19,7 +19,7 @@ comparison, insurance, advisory and general speed-up of firm work. Practice area
 | A4 | Tenant session (`tenant_session`), fixed RLS policies, isolation test suite (16 tests) | done; the request dependency that derives the context from a JWT lands with A5 |
 | A5 | Auth ([ADR 0006](adr/0006-auth-bootstrap.md)) | partial: register/login/refresh (rotation + reuse detection)/logout, `/me`, role-permission matrix, tenant context from token + path firm, `GET/PATCH /firms/{id}`, `GET /firms/{id}/clients`. Todo: TOTP MFA, SMS OTP, invitations, SSO, API keys, login rate limiting, restrict `users` column access |
 | A6 | Append-only audit log (privileges + trigger; `domain/audit.record`) | done |
-| B | Firms, members, clients, matters, deadlines, consents, tasks, pack installation | todo |
+| B | Members and invitations, clients (+ portal invitations), matters, deadlines, tasks, platform firm bootstrap | done (migration 0003, 20 API + 3 DB-level tests). Todo: consents, `matter_facts`, pack installation, suspend/revoke portal users |
 | C | Storage adapters; both ingest doors; OCR/parse pipeline; structure tree, typed fields, entities, versions | partial: structure parser done (`app/ingestion/structure.py`) |
 | D | Packs engine: rules + registry, `core_contract` and `insurance` draft packs | partial: rules engine, registry and 2 draft packs done; extraction/playbooks todo |
 | D2 | Deterministic comparison engine | partial: aligner, field diff and hints done; persistence, API, jobs todo |

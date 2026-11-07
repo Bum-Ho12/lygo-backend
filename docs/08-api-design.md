@@ -43,6 +43,12 @@ GET/POST   /v1/firms/{firm_id}/api-keys
 GET/POST   /v1/firms/{firm_id}/webhooks
 ```
 
+### Implemented so far (Phase A/B)
+`/auth/{register,login,refresh,logout}`, `/me`, `/me/memberships`, `/invitations/accept`,
+`/platform/firms` (GET/POST), `/firms/{id}` (GET/PATCH), `/members` (GET, PATCH, DELETE), `/invitations` (POST),
+`/clients` (CRUD + `/invitations`), `/clients/{id}/matters`, `/matters/{id}` (GET/PATCH), `/matters/{id}/deadlines`
+(GET/POST/PATCH), `/tasks` (GET/POST/PATCH). Firm-only resources (members, tasks, invitations) return 403 to client users.
+
 ### Clients & matters
 ```
 GET/POST   /v1/firms/{firm_id}/clients                 GET/PATCH/DELETE .../clients/{client_id}
