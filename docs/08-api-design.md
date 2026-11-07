@@ -43,6 +43,21 @@ GET/POST   /v1/firms/{firm_id}/api-keys
 GET/POST   /v1/firms/{firm_id}/webhooks
 ```
 
+### Self-service firm sign-up
+A registered user applies; a platform admin reviews; on approval the firm is created and the applicant becomes its
+`firm_owner` in one transaction (no invitation needed: the application is bound to the signed-in account).
+`FIRM_SIGNUP_MODE`: `review` (default) | `auto` (instant approval; dev/pilot only) | `closed`.
+- `GET /v1/firm-signup` (public): `{mode, terms_version}`
+- `GET /v1/firm-signup/slug-availability?slug=` (signed in, so firm names can't be enumerated anonymously)
+- `POST /v1/me/firm-applications` `{firm_name, slug, practice_areas[], lsk_admission_no?, phone?, town?, size, accept_terms}`
+  → 201 `pending` (or `approved` in auto mode). Errors: `terms_required`, `invalid_slug` (format / reserved), 409
+  `slug_taken` / `application_pending` (one open application per person), 429 (3 per user, 10 per IP, per day), 403 when closed.
+- `GET /v1/me/firm-applications`; `POST /v1/me/firm-applications/{id}:withdraw`
+- `GET /v1/platform/firm-applications?status=pending` (platform admin + support)
+- `POST /v1/platform/firm-applications/{id}:approve` `{slug?, note?}` / `:reject` `{reason}` (platform admin only; final).
+  The applicant is emailed a fixed-wording notice; a rejection reason is shown in the app only, never emailed.
+The applicant's accepted terms + DPA version and time are stored with the application (evidence for docs/16).
+
 ### Implemented so far (E3 + email-less mode)
 `POST/GET /firms/{id}/fact-checks`, `GET /fact-checks/{id}`, `GET /matters/{id}/chronology?after=&before=`, `POST /matters/{id}/case-builder`,
 `POST /platform/users/reset-link`. Invitation responses include `invite_link` when `email_sent` is false.

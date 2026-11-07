@@ -44,10 +44,13 @@ async def _safe(check) -> bool:  # type: ignore[no-untyped-def]
 
 @router.get("/health/ready")
 async def ready() -> JSONResponse:
-    """Readiness: dependencies reachable."""
-    db, redis = await asyncio.gather(_safe(check_db), _safe(check_redis))
-    ok = db and redis
+    """Readiness: required dependencies reachable. Redis is only required when the legacy Celery ingest mode is on;
+    background jobs otherwise run on the Postgres job queue."""
+    checks = {"db": await _safe(check_db)}
+    if settings.ingest_mode == "celery":
+        checks["redis"] = await _safe(check_redis)
+    ok = all(checks.values())
     return JSONResponse(
-        {"status": "ok" if ok else "unavailable", "checks": {"db": db, "redis": redis}},
+        {"status": "ok" if ok else "unavailable", "checks": checks},
         status_code=200 if ok else 503,
     )

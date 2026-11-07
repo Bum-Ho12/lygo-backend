@@ -32,6 +32,17 @@ TEMPLATES = {
             {"firm": _FIRM, "link": r"https?://\S+"},
         ),
         EmailTemplate(
+            "firm_approved", "Your firm {firm} is ready on Lygo",
+            "Good news: your application for {firm} has been approved and you are its owner.\n\nSign in to set up your workspace:\n{link}\n\n"
+            "Firm staff must use two-factor authentication; you will be guided through it after signing in.",
+            {"firm": _FIRM, "link": r"https?://\S+"},
+        ),
+        EmailTemplate(
+            "firm_rejected", "About your Lygo application for {firm}",
+            "We could not approve your application for {firm}. Sign in to see the reason and, if appropriate, apply again:\n{link}",
+            {"firm": _FIRM, "link": r"https?://\S+"},
+        ),
+        EmailTemplate(
             "password_reset", "Reset your Lygo password",
             "We received a request to reset your Lygo password.\n\nChoose a new password (the link works once and expires in {minutes} minutes):\n{link}\n\n"
             "If you didn't ask for this, ignore this email; your password stays as it is.",

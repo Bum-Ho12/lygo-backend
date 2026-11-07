@@ -123,3 +123,19 @@ def test_parse_dlr() -> None:
     for bad in ({}, {"msisdn": "1", "transaction_id": 1}, {"msisdn": "1", "status": "x", "transaction_id": 1}):
         with pytest.raises(ValueError):
             parse_dlr(bad)
+
+
+def test_sms_provider_selection_is_explicit(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.core.config import settings
+    from app.integrations.sms import factory
+
+    monkeypatch.setattr(settings, "thrivewave_base_url", "")
+    monkeypatch.setattr(settings, "thrivewave_api_key", "")
+    assert "console" in factory.describe() and type(factory.get_sms_provider()).__name__ == "ConsoleSmsProvider"
+    monkeypatch.setattr(settings, "app_env", "staging")
+    assert factory.get_sms_provider() is None and "disabled" in factory.describe()
+    monkeypatch.setattr(settings, "thrivewave_base_url", "https://sms.example.test")
+    monkeypatch.setattr(settings, "thrivewave_api_key", "k")
+    factory._thrivewave.cache_clear()
+    assert isinstance(factory.get_sms_provider(), ThrivewaveProvider) and "thrivewave" in factory.describe()
+    factory._thrivewave.cache_clear()

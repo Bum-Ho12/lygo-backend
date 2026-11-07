@@ -13,6 +13,7 @@ _PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"(?<!\d)\d{7,8}(?!\d)"), "[id-number]"),  # national ID / passport-like
 ]
 _SENSITIVE_KEYS = {"password", "token", "authorization", "api_key", "secret", "prompt"}
+_UNMASKED_KEYS = {"request_id", "event", "job", "notification_id", "transaction_id"}  # identifiers, not personal data
 
 
 def mask_pii(text: str) -> str:
@@ -32,7 +33,9 @@ def _mask_value(value: Any) -> Any:
 
 
 def pii_processor(_: Any, __: str, event_dict: MutableMapping[str, Any]) -> dict[str, Any]:
-    return {k: "[redacted]" if k.lower() in _SENSITIVE_KEYS else _mask_value(v) for k, v in event_dict.items()}
+    return {
+        k: "[redacted]" if k.lower() in _SENSITIVE_KEYS else (v if k in _UNMASKED_KEYS else _mask_value(v)) for k, v in event_dict.items()
+    }
 
 
 def configure_logging(level: str = "INFO", json_logs: bool = True) -> None:

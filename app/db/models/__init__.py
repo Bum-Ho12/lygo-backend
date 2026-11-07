@@ -1,3 +1,4 @@
+from app.db.models.applications import FirmApplication
 from app.db.models.audit import AuditEvent
 from app.db.models.auth import RefreshToken
 from app.db.models.chat import Chat, MatterFact, Message
@@ -36,6 +37,7 @@ __all__ = [
     "FactCheck",
     "FactCheckItem",
     "Firm",
+    "FirmApplication",
     "FirmMembership",
     "Flag",
     "IngestEvent",
