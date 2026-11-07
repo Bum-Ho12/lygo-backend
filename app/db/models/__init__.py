@@ -12,6 +12,7 @@ from app.db.models.documents import (
     Page,
 )
 from app.db.models.factcheck import FactCheck, FactCheckItem
+from app.db.models.jobs import JobRow, JobSchedule
 from app.db.models.notifications import Notification
 from app.db.models.rag import Chunk, CorpusDocument
 from app.db.models.security import MfaRecoveryCode, OtpChallenge, PasswordResetToken
@@ -39,6 +40,8 @@ __all__ = [
     "Flag",
     "IngestEvent",
     "Invitation",
+    "JobRow",
+    "JobSchedule",
     "Matter",
     "MatterFact",
     "Message",
