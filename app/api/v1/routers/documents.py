@@ -9,12 +9,12 @@ from typing import Annotated, Any, Literal
 from fastapi import APIRouter, Depends, File, Form, Query, Request, Response, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select, text
+from sqlalchemy import and_, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import Factory, require, tenant_db
 from app.core.config import settings
-from app.core.errors import NotFound, ProblemError
+from app.core.errors import Forbidden, NotFound, ProblemError
 from app.core.pagination import Page, keyset_page
 from app.core.tenancy import TenantContext, tenant_session
 from app.db.models.documents import (
@@ -124,6 +124,8 @@ class FieldOut(BaseModel):
     key: str
     value: str
     section_path: str
+    start: int | None = None  # offsets within the section's full_text (GET .../sections)
+    end: int | None = None
 
 
 class EntityOut(BaseModel):
@@ -142,6 +144,45 @@ def _doc(d: Document, duplicate: bool = False) -> DocumentOut:
         sensitivity=d.sensitivity, page_count=d.page_count, shared_with_clients=d.shared_with_clients,
         version_group_id=d.version_group_id, version_no=d.version_no, created_at=d.created_at, duplicate=duplicate,
     )
+
+
+# --- what a client (portal user) may see -----------------------------------------------------------
+# Clients see finished documents, plus their own uploads (as simply "received"). Firm work in progress, the processing
+# pipeline, internal labels, unconfirmed engine flags and machine-extracted fields stay inside the firm.
+def _is_client(ctx: TenantContext) -> bool:
+    return ctx.client_id is not None
+
+
+def _client_may_see(d: Document, ctx: TenantContext) -> bool:
+    return d.status == "processed" or (d.scope == "client" and d.uploaded_by == ctx.user_id)
+
+
+def _client_doc(d: Document) -> DocumentOut:
+    out = _doc(d)
+    return out.model_copy(update={
+        "status": "processed" if d.status == "processed" else "received", "status_detail": "", "tags": [], "sensitivity": "normal",
+        "shared_with_clients": False,
+    })
+
+
+def _out_for(d: Document, ctx: TenantContext, duplicate: bool = False) -> DocumentOut:
+    return _client_doc(d) if _is_client(ctx) else _doc(d, duplicate)
+
+
+async def _visible_doc(db: AsyncSession, ctx: TenantContext, doc_id: uuid.UUID) -> Document:
+    d = await get_or_404(db, Document, doc_id, "document")
+    if _is_client(ctx) and not _client_may_see(d, ctx):
+        raise NotFound("document")  # indistinguishable from a document that doesn't exist
+    return d
+
+
+def _client_visible_filter(ctx: TenantContext) -> Any:
+    return or_(Document.status == "processed", and_(Document.scope == "client", Document.uploaded_by == ctx.user_id))
+
+
+def _firm_only(ctx: TenantContext) -> None:
+    if _is_client(ctx):
+        raise Forbidden("This is only available to the firm.")
 
 
 def _flag(f: Flag) -> FlagOut:
@@ -168,8 +209,10 @@ async def upload_knowledge(
 @router.get("/knowledge/documents", response_model=Page[DocumentOut])
 async def list_knowledge(db: Db, ctx: DocRead, cursor: str | None = None, limit: Limit = None) -> Page[DocumentOut]:
     stmt = select(Document).where(Document.scope == "firm_kb", Document.deleted_at.is_(None))
+    if _is_client(ctx):
+        stmt = stmt.where(Document.status == "processed")  # RLS already limits clients to knowledge the firm shared
     rows, nxt = await keyset_page(db, stmt, Document.id, cursor=cursor, limit=limit)
-    return Page[DocumentOut](items=[_doc(d) for d in rows], next_cursor=nxt)
+    return Page[DocumentOut](items=[_out_for(d, ctx) for d in rows], next_cursor=nxt)
 
 
 @router.patch("/knowledge/documents/{doc_id}", response_model=DocumentOut)
@@ -201,20 +244,25 @@ async def upload_client_document(
         title=title, tags=_tags(tags), previous_version_id=previous_version_id,
     )
     response.status_code = 200 if dup else 201
-    return _doc(doc, dup)
+    return _out_for(doc, ctx, dup)
 
 
 @router.get("/clients/{client_id}/documents", response_model=Page[DocumentOut])
 async def list_client_documents(client_id: uuid.UUID, db: Db, ctx: DocRead, cursor: str | None = None, limit: Limit = None) -> Page[DocumentOut]:
     stmt = select(Document).where(Document.client_id == client_id, Document.deleted_at.is_(None))
+    if _is_client(ctx):
+        stmt = stmt.where(_client_visible_filter(ctx))
     rows, nxt = await keyset_page(db, stmt, Document.id, cursor=cursor, limit=limit)
-    return Page[DocumentOut](items=[_doc(d) for d in rows], next_cursor=nxt)
+    return Page[DocumentOut](items=[_out_for(d, ctx) for d in rows], next_cursor=nxt)
 
 
 # --- shared ----------------------------------------------------------------------------------------
 @router.get("/documents/{doc_id}", response_model=DocumentDetail)
 async def get_document(doc_id: uuid.UUID, db: Db, ctx: DocRead) -> DocumentDetail:
-    d = await get_or_404(db, Document, doc_id, "document")
+    d = await _visible_doc(db, ctx, doc_id)
+    if _is_client(ctx):
+        counts = dict((await db.execute(select(Flag.severity, func.count()).where(Flag.document_id == d.id, Flag.status == "acknowledged").group_by(Flag.severity))).all())
+        return DocumentDetail(**_client_doc(d).model_dump(), events=[], flag_counts=counts)
     events = (await db.execute(select(IngestEvent).where(IngestEvent.document_id == d.id).order_by(IngestEvent.id))).scalars()
     counts = dict((await db.execute(select(Flag.severity, func.count()).where(Flag.document_id == d.id, Flag.status != "dismissed").group_by(Flag.severity))).all())
     return DocumentDetail(**_doc(d).model_dump(), events=[EventOut(stage=e.stage, status=e.status, detail=e.detail, at=e.at) for e in events], flag_counts=counts)
@@ -222,7 +270,7 @@ async def get_document(doc_id: uuid.UUID, db: Db, ctx: DocRead) -> DocumentDetai
 
 @router.get("/documents/{doc_id}/content")
 async def document_content(doc_id: uuid.UUID, db: Db, resolver: Resolver, ctx: DocRead) -> StreamingResponse:
-    d = await get_or_404(db, Document, doc_id, "document")
+    d = await _visible_doc(db, ctx, doc_id)
     try:
         storage = await resolver.for_destination(db, d.firm_id, d.storage_destination_id)
     except StorageError as exc:
@@ -249,6 +297,7 @@ async def document_content(doc_id: uuid.UUID, db: Db, resolver: Resolver, ctx: D
 async def document_events(doc_id: uuid.UUID, request: Request, factory: Factory, ctx: DocRead, after: int = 0) -> StreamingResponse:
     """Server-Sent Events: the document's processing timeline, live. Resume with `?after=<last event id>` (or Last-Event-ID).
     Ends with `event: done` once the document reaches a final status."""
+    _firm_only(ctx)  # the processing pipeline is internal to the firm
     last = max(after, int(request.headers.get("last-event-id", "0") or 0))
     async with tenant_session(factory, ctx) as db:
         await get_or_404(db, Document, doc_id, "document")
@@ -274,10 +323,16 @@ async def document_events(doc_id: uuid.UUID, request: Request, factory: Factory,
 
 @router.get("/documents/{doc_id}/flags", response_model=list[FlagOut])
 async def document_flags(doc_id: uuid.UUID, db: Db, ctx: Annotated[TenantContext, Depends(require("flags.read"))]) -> list[FlagOut]:
-    await get_or_404(db, Document, doc_id, "document")
-    rows = (await db.execute(select(Flag).where(Flag.document_id == doc_id).order_by(Flag.created_at, Flag.id))).scalars()
+    await _visible_doc(db, ctx, doc_id)
+    stmt = select(Flag).where(Flag.document_id == doc_id).order_by(Flag.created_at, Flag.id)
+    if _is_client(ctx):  # only findings an advocate has confirmed, without the firm's internal notes (docs/frontend 07)
+        stmt = stmt.where(Flag.status == "acknowledged")
+    rows = (await db.execute(stmt)).scalars()
+    out = [_flag(f) for f in rows]
+    if _is_client(ctx):
+        out = [f.model_copy(update={"rule_id": "", "extracted": {}, "resolution_note": ""}) for f in out]
     order = {"critical": 0, "warning": 1, "caution": 2, "info": 3}
-    return sorted((_flag(f) for f in rows), key=lambda f: order.get(f.severity, 9))
+    return sorted(out, key=lambda f: order.get(f.severity, 9))
 
 
 @router.patch("/flags/{flag_id}", response_model=FlagOut)
@@ -335,9 +390,26 @@ async def compare(body: CompareIn, db: Db, ctx: Annotated[TenantContext, Depends
 
 @router.get("/documents/{doc_id}/fields", response_model=list[FieldOut])
 async def document_fields(doc_id: uuid.UUID, db: Db, ctx: DocRead) -> list[FieldOut]:
+    _firm_only(ctx)  # unreviewed machine extraction
     await get_or_404(db, Document, doc_id, "document")
     rows = (await db.execute(select(DocumentField).where(DocumentField.document_id == doc_id).order_by(DocumentField.kind, DocumentField.key, DocumentField.id))).scalars()
-    return [FieldOut(kind=f.kind, key=f.key, value=f.value, section_path=f.section_path) for f in rows]
+    return [FieldOut(kind=f.kind, key=f.key, value=f.value, section_path=f.section_path, start=f.span_start, end=f.span_end) for f in rows]
+
+
+class SectionOut(BaseModel):
+    path: str
+    number: str
+    heading: str
+    page: int | None
+    full_text: str  # heading + body exactly as the engine read it: flag spans and field offsets index into this text
+
+
+@router.get("/documents/{doc_id}/sections", response_model=list[SectionOut])
+async def document_sections(doc_id: uuid.UUID, db: Db, ctx: DocRead) -> list[SectionOut]:
+    """The document's text, section by section, for the annotated view (highlights come from flag spans / field offsets)."""
+    await _visible_doc(db, ctx, doc_id)
+    rows = (await db.execute(select(DocumentSection).where(DocumentSection.document_id == doc_id).order_by(DocumentSection.ord))).scalars()
+    return [SectionOut(path=s.path, number=s.number, heading=s.heading, page=s.page, full_text=f"{s.heading}\n{s.text}".strip()) for s in rows]
 
 
 @router.get("/entities", response_model=list[EntityOut])

@@ -94,9 +94,10 @@ class TaskOut(BaseModel):
     due_at: datetime | None
 
 
-def _m(m: Matter) -> MatterOut:
-    return MatterOut(id=m.id, client_id=m.client_id, title=m.title, practice_area=m.practice_area, status=m.status,
-                     assigned_user_ids=list(m.assigned_user_ids or []))
+def _m(m: Matter, ctx: TenantContext | None = None) -> MatterOut:
+    # Who in the firm is assigned is internal staffing: clients don't get the ids.
+    assigned = [] if ctx is not None and ctx.client_id is not None else list(m.assigned_user_ids or [])
+    return MatterOut(id=m.id, client_id=m.client_id, title=m.title, practice_area=m.practice_area, status=m.status, assigned_user_ids=assigned)
 
 
 def _d(d: Deadline) -> DeadlineOut:
@@ -126,12 +127,12 @@ async def create_matter(client_id: uuid.UUID, body: MatterIn, db: Db, ctx: Manag
 @router.get("/clients/{client_id}/matters", response_model=Page[MatterOut])
 async def list_client_matters(client_id: uuid.UUID, db: Db, ctx: Read, cursor: str | None = None, limit: Limit = None) -> Page[MatterOut]:
     rows, nxt = await keyset_page(db, select(Matter).where(Matter.client_id == client_id), Matter.id, cursor=cursor, limit=limit)
-    return Page[MatterOut](items=[_m(m) for m in rows], next_cursor=nxt)
+    return Page[MatterOut](items=[_m(m, ctx) for m in rows], next_cursor=nxt)
 
 
 @router.get("/matters/{matter_id}", response_model=MatterOut)
 async def get_matter(matter_id: uuid.UUID, db: Db, ctx: Read) -> MatterOut:
-    return _m(await get_or_404(db, Matter, matter_id, "matter"))
+    return _m(await get_or_404(db, Matter, matter_id, "matter"), ctx)
 
 
 @router.patch("/matters/{matter_id}", response_model=MatterOut)

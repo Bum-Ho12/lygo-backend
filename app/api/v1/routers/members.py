@@ -55,7 +55,9 @@ async def invite_member(
 
 @router.get("/invitations")
 async def list_invitations(db: Db, ctx: Annotated[TenantContext, Depends(require("members.manage"))]) -> dict[str, list[dict[str, object]]]:
-    rows = (await db.execute(select(Invitation).where(Invitation.accepted_at.is_(None)).order_by(Invitation.created_at.desc()).limit(200))).scalars()
+    rows = (await db.execute(
+        select(Invitation).where(Invitation.accepted_at.is_(None), Invitation.revoked_at.is_(None)).order_by(Invitation.created_at.desc()).limit(200)
+    )).scalars()
     return {"items": [{"id": str(i.id), "email": i.email, "role": i.role, "client_id": str(i.client_id) if i.client_id else None,
                        "expires_at": i.expires_at.isoformat(), "expired": i.expires_at <= datetime.now(UTC)} for i in rows]}
 
@@ -68,6 +70,12 @@ async def resend_invitation(
     r = await service.resend_invitation(db, ctx, email, invitation_id, firm_name=firm.name if firm else "")
     inv = r.invitation
     return InviteOut(id=inv.id, email=inv.email, role=inv.role, client_id=inv.client_id, email_sent=r.emailed, invite_link=None if r.emailed else r.link)
+
+
+@router.delete("/invitations/{invitation_id}", status_code=204)
+async def revoke_invitation(invitation_id: uuid.UUID, db: Db, ctx: Annotated[TenantContext, Depends(require("members.manage"))]) -> None:
+    """Revoke a pending invitation (firm or client portal). The link stops working at once."""
+    await service.revoke_invitation(db, ctx, invitation_id)
 
 
 @router.patch("/members/{user_id}")

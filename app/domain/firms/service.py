@@ -4,6 +4,7 @@ import secrets
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import structlog
 from sqlalchemy import func, select, text
@@ -125,16 +126,57 @@ async def create_invitation(
             raise ProblemError(422, "invalid_role", "Invalid role", f"Role must be one of {sorted(CLIENT_ROLES)}.")
         if await db.get(Client, client_id) is None:
             raise NotFound("client")
+    await _refuse_existing_access(db, ctx.firm_id, client_id, to)
+    open_inv = (await db.execute(select(Invitation).where(*_open_for(ctx.firm_id, client_id, to)).with_for_update())).scalar_one_or_none()
+    if open_inv is not None:
+        if open_inv.expires_at > datetime.now(UTC):
+            raise _conflict("invitation_pending", f"An invitation to {to} is already pending. Resend it instead of inviting again.")
+        open_inv.revoked_at = datetime.now(UTC)  # an expired invitation is superseded by the new one
+        await db.flush()
     token = secrets.token_urlsafe(32)
     inv = Invitation(
         firm_id=ctx.firm_id, client_id=client_id, email=to, role=role, token_hash=hash_refresh_token(token),
         invited_by=ctx.user_id, expires_at=datetime.now(UTC) + INVITE_TTL,
     )
     db.add(inv)
-    await db.flush()
+    try:
+        async with db.begin_nested():  # the unique index settles a race between two simultaneous invitations
+            await db.flush()
+    except IntegrityError as exc:
+        raise _conflict("invitation_pending", f"An invitation to {to} is already pending. Resend it instead of inviting again.") from exc
     await audit.record(db, ctx, "invitation.create", target=f"invitation:{inv.id}", meta={"role": role, "client_id": str(client_id) if client_id else None})
     sent = await send_invitation_email(email, to, firm_name, token)
     return InviteResult(inv, sent, link("accept-invite", token=token))
+
+
+def _open_for(firm_id: uuid.UUID, client_id: uuid.UUID | None, email: str) -> list[Any]:
+    scope = Invitation.client_id.is_(None) if client_id is None else Invitation.client_id == client_id
+    return [Invitation.firm_id == firm_id, scope, func.lower(Invitation.email) == email, Invitation.accepted_at.is_(None), Invitation.revoked_at.is_(None)]
+
+
+async def _refuse_existing_access(db: AsyncSession, firm_id: uuid.UUID, client_id: uuid.UUID | None, email: str) -> None:
+    user_id = (await db.execute(select(User.id).where(User.email == email))).scalar_one_or_none()
+    if user_id is None:
+        return
+    if client_id is None:
+        member = (await db.execute(select(FirmMembership.role).where(FirmMembership.firm_id == firm_id, FirmMembership.user_id == user_id))).scalar_one_or_none()
+        if member is not None:
+            raise _conflict("already_member", f"{email} is already a member of this firm.")
+    else:
+        has = (await db.execute(select(func.count()).select_from(ClientMembership).where(
+            ClientMembership.client_id == client_id, ClientMembership.user_id == user_id))).scalar_one()
+        if has:
+            raise _conflict("already_has_access", f"{email} already has access to this client's portal.")
+
+
+async def revoke_invitation(db: AsyncSession, ctx: TenantContext, invitation_id: uuid.UUID, *, client_id: uuid.UUID | None = None) -> Invitation:
+    """The link stops working immediately. The row is kept (audit), hidden from the pending list."""
+    inv = await db.get(Invitation, invitation_id)
+    if inv is None or inv.accepted_at is not None or inv.revoked_at is not None or (client_id is not None and inv.client_id != client_id):
+        raise NotFound("invitation")
+    inv.revoked_at, inv.revoked_by = datetime.now(UTC), ctx.user_id
+    await audit.record(db, ctx, "invitation.revoke", target=f"invitation:{inv.id}")
+    return inv
 
 
 async def send_invitation_email(email: EmailSender, to: str, firm_name: str, token: str) -> bool:
@@ -156,7 +198,7 @@ async def send_invitation_email(email: EmailSender, to: str, firm_name: str, tok
 async def resend_invitation(db: AsyncSession, ctx: TenantContext, email: EmailSender, invitation_id: uuid.UUID, *, firm_name: str) -> InviteResult:
     """Tokens are stored hashed, so resending issues a fresh token (the old link stops working)."""
     inv = await db.get(Invitation, invitation_id)
-    if inv is None or inv.accepted_at is not None:
+    if inv is None or inv.accepted_at is not None or inv.revoked_at is not None:
         raise NotFound("invitation")
     token = secrets.token_urlsafe(32)
     inv.token_hash, inv.expires_at = hash_refresh_token(token), datetime.now(UTC) + INVITE_TTL
@@ -171,7 +213,7 @@ async def accept_invitation(db: AsyncSession, user: User, token: str) -> dict[st
     await db.execute(text("SELECT set_config('app.invite_token_hash', :h, true)"), {"h": digest})
     inv = (await db.execute(select(Invitation).where(Invitation.token_hash == digest).with_for_update())).scalar_one_or_none()
     bad = ProblemError(400, "invalid_invitation", "Invalid invitation", "This invitation is invalid, expired or already used.")
-    if inv is None or inv.accepted_at is not None or inv.expires_at <= datetime.now(UTC):
+    if inv is None or inv.accepted_at is not None or inv.revoked_at is not None or inv.expires_at <= datetime.now(UTC):
         raise bad
     if inv.email != user.email.lower():
         raise bad  # a forwarded token must not grant access to a different account
