@@ -65,3 +65,12 @@ def test_registry_lists_packs_and_blocks_unreviewed_in_production() -> None:
         load_rule_pack("insurance", allow_unreviewed=False)
     with pytest.raises(PackNotAvailable):
         load_rule_pack("does_not_exist")
+
+
+def test_unclassified_document_gets_no_type_scoped_flags() -> None:
+    """A payslip or medical report (doc_type None) must not get 'no termination clause' or 'schedule missing'."""
+    for pack_id in ("core_contract", "insurance"):
+        assert evaluate_pack(load_rule_pack(pack_id), parse_structure("NET PAY: KES 31,191", None)) == []
+    unscoped = RulePack(pack="p", version="1", rules=[
+        Rule(id="any.kes", severity="info", title="t", explain="e", when=When(clause_matches=["KES"]))])
+    assert [f.rule_id for f in evaluate_pack(unscoped, parse_structure("NET PAY: KES 31,191", None))] == ["any.kes"]
