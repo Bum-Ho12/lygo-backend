@@ -70,7 +70,7 @@ async def _reauth(db: AsyncSession, keys: KeyProvider, user: User, password: str
 async def security_summary(user_id: UserId, claims: Claims, db: Db) -> dict[str, object]:
     u = await _user(db, user_id)
     return {
-        "email_verified": u.email_verified_at is not None, "phone": mask(u.phone) if u.phone else None, "phone_verified": u.phone_verified_at is not None,
+        "phone": mask(u.phone) if u.phone else None, "phone_verified": u.phone_verified_at is not None,
         "totp_enabled": u.mfa_totp_enabled_at is not None, "sms_enabled": u.mfa_sms_enabled,
         "recovery_codes_remaining": await mfa.recovery_codes_remaining(db, u.id), "session_mfa": claims.mfa,
     }

@@ -7,6 +7,14 @@ from typing import Literal, Protocol
 class LlmError(Exception): ...
 
 
+class LlmRefused(LlmError):
+    """The provider's safety classifiers declined the request (stop_reason "refusal"). Not an outage: do not retry blindly."""
+
+    def __init__(self, category: str | None = None) -> None:
+        super().__init__(f"request declined by provider safeguards (category: {category or 'unspecified'})")
+        self.category = category
+
+
 class LlmUnavailable(LlmError):
     """Transient: the provider is down or rate-limiting after retries."""
 
@@ -29,5 +37,7 @@ class LlmResult:
 class LLMProvider(Protocol):
     model: str
 
-    async def generate(self, messages: list[ChatMessage], *, temperature: float = 0.0, max_tokens: int = 900) -> LlmResult: ...
+    async def generate(
+        self, messages: list[ChatMessage], *, temperature: float = 0.0, max_tokens: int = 900, effort: str | None = None
+    ) -> LlmResult: ...
     def stream(self, messages: list[ChatMessage], *, temperature: float = 0.0, max_tokens: int = 900) -> AsyncIterator[str]: ...

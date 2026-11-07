@@ -1,0 +1,31 @@
+REPUBLIC OF KENYA
+IN THE HIGH COURT OF KENYA AT NAIROBI
+COMMERCIAL AND TAX DIVISION
+COMMERCIAL CASE NO. E914 OF 2025
+BETWEEN
+AMANI BAKERS LIMITED ........ PLAINTIFF
+AND
+SALAMA TAKAFUL INSURANCE LIMITED ........ DEFENDANT
+JUDGMENT
+Coram: Hon. Justice R. M. Odhiambo-Wekesa
+Delivered on 12th March 2026
+Introduction
+1. The Plaintiff, a bakery operating in Industrial Area, Nairobi, held a Takaful fire and allied perils cover with the Defendant under certificate number STI/FIR/2024/00871. On 3rd August 2024 a fire broke out in the Plaintiff's oven room and destroyed machinery and stock valued by the Plaintiff at KES 14,250,000.
+2. The Defendant declined the claim by a letter dated 2nd October 2024 on the ground that the Plaintiff had failed to notify the loss within 7 days and had not disclosed an earlier electrical fault. The Plaintiff seeks the sum of KES 14,250,000, interest and costs.
+The Plaintiff's case
+3. The Plaintiff's managing director, Ms. Wanjiru Kibet, testified that she telephoned the Defendant's branch on the day after the fire and followed up with an email on 9th August 2024. She produced the email, the loss assessor's preliminary report and the policy schedule.
+4. She denied that any electrical fault had been reported before the policy incepted and stated that the inspection by the Defendant's surveyor in January 2024 raised no concern.
+The Defendant's case
+5. The Defendant's claims manager testified that written notice was received on the ninth day after the loss and that clause 6.2 of the policy wording requires written notice within 7 days. He accepted in cross-examination that the Defendant appointed a loss adjuster on 5th August 2024.
+Issues for determination
+6. The issues for determination are: (a) whether the Plaintiff gave notice of the loss as required by the policy; (b) whether there was material non-disclosure; and (c) what relief, if any, should issue.
+Analysis and determination
+7. The policy was issued as Takaful insurance business, which is recognised and regulated under section 19A of the Insurance Act (Cap. 487). Nothing in that section or in the policy wording displaces the ordinary rule that a condition relied on to defeat a claim must be strictly proved by the insurer.
+8. An insurer that appoints a loss adjuster two days after a loss cannot credibly maintain that it lacked notice. I am guided by Mwangaza Holdings Ltd v Tausi Insurance Co Ltd [2019] KEHC 90211 (KLR), where the court held that actual knowledge of the insurer satisfies the purpose of a notice clause.
+9. On non-disclosure, the surveyor's report of January 2024 records the electrical installation as satisfactory. The Defendant called no evidence of any earlier fault. The defence of non-disclosure therefore fails.
+10. The right to property under Article 40 of the Constitution is not engaged directly between these private parties, and I decide the matter on the contract alone.
+11. On quantum, the assessor's final figure of KES 12,980,500 was not challenged and I adopt it in preference to the Plaintiff's own estimate.
+Orders
+12. Judgment is entered for the Plaintiff against the Defendant for KES 12,980,500 with interest at court rates from the date of filing until payment in full. The Defendant shall bear the costs of the suit.
+R. M. ODHIAMBO-WEKESA
+JUDGE

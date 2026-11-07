@@ -210,3 +210,39 @@ def test_grounding_uses_keyword_coverage_not_any_word() -> None:
     from app.engine.rag.retrieval.hybrid import keywords
 
     assert keywords("When must a claimant file? The claim; the CLAIM!") == ["when", "must", "claimant", "file", "the", "claim"]
+
+
+# --- regression: real Claude Opus 5.5 output (captured live) must survive the verifier ------------------------------------------
+REAL_SRC = [
+    Source(1, "a", "Synthetic Insurance Test Act", "s.5", "Section 5. Notice of claim. (1) A claimant shall give notice of a claim to the insurer within sixty days of the loss. (2) An insurer shall not repudiate a claim solely because notice was given late, unless it was prejudiced."),
+    Source(2, "b", "Synthetic Insurance Test Act", "s.6", "Section 6. Payment of claims. An insurer shall pay a settled claim within ninety days of settlement."),
+    Source(3, "c", "Synthetic Insurance Test Act", "s.7", "Section 7. Exclusions must be disclosed. An insurer shall not rely on an exclusion unless it was disclosed to the insured in plain language before the policy began."),
+]
+
+
+def test_a_real_structured_research_note_keeps_its_structure() -> None:
+    from pathlib import Path
+
+    raw = (Path(__file__).parents[1] / "fixtures" / "ai" / "claude_research_note.txt").read_text()
+    v = verify(raw, REAL_SRC)
+    assert v.ok and v.used == [1, 3] and v.kept_sentences >= 25
+    assert {r.reason for r in v.removed} == {"uncited"} and len(v.removed) <= 4  # was 15 before headings/questions/meta were understood
+    kept = v.text.splitlines()
+    assert len(kept) == len(raw.splitlines())  # markdown structure is preserved line for line
+    assert kept[0].startswith("# Notice of Claim") and "## Issues" in kept and "## Gaps and what to verify" in kept
+    assert "1. What is the time limit for a claimant to notify the insurer of a claim?" in kept  # questions are not claims
+    assert any("The sources do not define it" in line for line in kept)  # statements about source coverage are not claims
+    assert "Late notice does not by itself defeat a claim." not in v.text  # but an uncited assertion of law is still removed
+    assert all(line.count("**") % 2 == 0 for line in kept)  # removing a sentence never orphans bold markup
+
+
+def test_exemptions_do_not_become_loopholes() -> None:
+    drop = verify("Notice is due in sixty days [S1]. The sources say no notice is needed in any circumstances at all whatsoever.", REAL_SRC)
+    assert [r.reason for r in drop.removed] == ["uncited"]  # attributing a claim to "the sources" is still a claim
+    inv = verify("## Section 99 of the Act [S9]\nNotice is due in sixty days [S1].", REAL_SRC)
+    assert [r.reason for r in inv.removed] == ["invalid_marker"] and "S9" not in inv.text  # headings still get the marker check
+    fake = verify("Do the sources cover this? Check section 99 before advising. Notice is due in sixty days [S1].", REAL_SRC)
+    assert [r.reason for r in fake.removed] == ["unsupported_authority"] and "Do the sources cover this?" in fake.text  # reminders may not invent law
+    only = verify("## Issues\n1. What is the time limit?\n- The sources do not address remedies.", REAL_SRC)
+    assert not only.ok  # a note with structure but no verified citation is still not acceptable
+    assert verify("- **Time limit:** Late notice may not defeat the claim without any proof of harm. [S1]\n", REAL_SRC).text.startswith("- **Time limit:**")

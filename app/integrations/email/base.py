@@ -25,18 +25,27 @@ class EmailMessage:
 
 
 class EmailSender(Protocol):
+    """`delivers` is False for senders that cannot reach a real inbox (console/unavailable): callers then hand the link to a
+    human instead (e.g. the inviter), and skip best-effort notifications silently."""
+
+    delivers: bool
+
     async def send(self, message: EmailMessage) -> None: ...
 
 
 class ConsoleEmailSender:
     """Local default: logs a masked line; never prints message bodies (they contain tokens)."""
 
+    delivers = False
+
     async def send(self, message: EmailMessage) -> None:
         structlog.get_logger().info("email.queued", to=message.to, subject=message.subject, **message.tags)
 
 
 class UnavailableEmailSender:
-    """Outside local with no SMTP configured: fail loudly instead of silently dropping invitations."""
+    """No SMTP configured outside local env. Nothing is silently dropped: invitation APIs report email_sent=false and return the link."""
+
+    delivers = False
 
     async def send(self, message: EmailMessage) -> None:
         raise EmailError("outbound email is not configured (set SMTP_HOST)", transient=False)
@@ -47,6 +56,7 @@ class InMemoryEmailSender:
     """For tests."""
 
     sent: list[EmailMessage] = field(default_factory=list)
+    delivers = True
 
     async def send(self, message: EmailMessage) -> None:
         self.sent.append(message)

@@ -7,8 +7,13 @@ from app.ingestion.models import DocumentText
 
 
 def _applies(rule: Rule, pack: RulePack, doc_type: str | None) -> bool:
+    """A rule scoped to document types runs only on a document classified as one of them.
+
+    An unclassified document (doc_type None) gets only unscoped rules: running contract or insurance
+    checks on a payslip or medical report produces false "missing clause" flags.
+    """
     types = rule.doc_types or pack.doc_types
-    return not types or doc_type is None or doc_type in types
+    return not types or doc_type in types
 
 
 def _format(explain: str, extracted: dict[str, str]) -> str:

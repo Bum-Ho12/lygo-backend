@@ -138,3 +138,50 @@ def test_classification() -> None:
     assert classify("lorem ipsum dolor sit amet").doc_type is None
     assert classify("Insurance policy. The patient has a medical diagnosis. Sum insured KES 5. Premium.").sensitivity == "sensitive"
     assert classify("Sum insured and premium under this insurance policy").sensitivity == "normal"
+
+
+# --- classification: court decisions, orders, claim forms, medical reports, leases ---------------
+JUDGMENT = """REPUBLIC OF KENYA
+IN THE HIGH COURT OF KENYA AT MOMBASA
+CIVIL APPEAL NO. 40 OF 2024
+BETWEEN
+JOHN DOE ........ APPELLANT
+AND
+ACME LTD ........ RESPONDENT
+JUDGMENT
+Coram: Justice X
+1. This is an appeal from the judgment of the trial court.
+2. The issues for determination are whether the appellant was negligent.
+3. The appeal is dismissed with costs of the appeal to the respondent.
+Judgment delivered at Mombasa this 3rd day of May 2026."""
+
+PLAINT = """IN THE HIGH COURT OF KENYA AT NAIROBI
+CIVIL SUIT NO. 12 OF 2026
+PLAINT
+1. The Plaintiff is a limited liability company.
+2. The Defendant is an individual residing in Nairobi.
+3. On 1st March 2026 the Defendant breached the contract.
+REASONS WHEREFORE the Plaintiff prays for judgment against the Defendant for KES 2,000,000 and costs of the suit."""
+
+
+def test_classify_judgment_but_not_a_plaint() -> None:
+    assert classify(JUDGMENT).doc_type == "judgment"
+    assert classify(PLAINT).doc_type == "court_pleading"
+
+
+def test_classify_court_order_claim_form_medical_report_and_lease() -> None:
+    order = "IN THE HIGH COURT OF KENYA\nORDER\nUpon hearing counsel IT IS HEREBY ORDERED THAT the respondent pays.\nGIVEN under my hand and the seal of the court."
+    assert classify(order).doc_type == "court_order"
+    form = "MOTOR CLAIM FORM\nName of insured: A\nDate of loss: 1/2/2026\nPlace of loss: Thika road\nI declare that the above is true."
+    assert classify(form).doc_type == "claim_form"
+    med = "MEDICAL REPORT\nThe patient was admitted on 2 March and discharged on 5 March.\nDiagnosis: fracture of the left femur."
+    assert classify(med).doc_type == "medical_report"
+    assert classify(med).sensitivity == "sensitive"
+    lease = "THIS LEASE is made between A (the Lessor) and B (the Lessee). The rent is KES 50,000. This agreement is governed by the laws of Kenya and either party may terminate it."
+    assert classify(lease).doc_type == "tenancy_agreement"
+
+
+def test_policy_that_mentions_a_claim_form_stays_a_policy() -> None:
+    text = ("Insurance policy schedule. Sum insured KES 2,000,000. Premium payable annually. Exclusions apply. "
+            "To claim, the insured must complete a claim form within 30 days.")
+    assert classify(text).doc_type == "insurance_policy"

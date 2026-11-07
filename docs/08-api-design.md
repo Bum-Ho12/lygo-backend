@@ -43,6 +43,10 @@ GET/POST   /v1/firms/{firm_id}/api-keys
 GET/POST   /v1/firms/{firm_id}/webhooks
 ```
 
+### Implemented so far (E3 + email-less mode)
+`POST/GET /firms/{id}/fact-checks`, `GET /fact-checks/{id}`, `GET /matters/{id}/chronology?after=&before=`, `POST /matters/{id}/case-builder`,
+`POST /platform/users/reset-link`. Invitation responses include `invite_link` when `email_sent` is false.
+
 ### Implemented so far (auth hardening)
 `POST /auth/login` (returns tokens, or `mfa_required` + `mfa_token`), `/auth/mfa/sms/send`, `/auth/mfa/verify` (`totp` | `sms` | `recovery`),
 `/auth/password/forgot`, `/auth/password/reset`; account security under `/me`: `/security`, `/phone`, `/phone/verify`, `/mfa/sms`,

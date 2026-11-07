@@ -1,24 +1,29 @@
+import hashlib
 import secrets
 import uuid
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import insert, select
 
-from app.api.deps import Claims, Factory, mfa_gate
-from app.core.errors import Forbidden, ProblemError
+from app.api.deps import Claims, Factory, client_ip, mfa_gate
+from app.core.config import settings
+from app.core.errors import Forbidden, NotFound, ProblemError
 from app.core.permissions import has_permission
 from app.core.security import hash_refresh_token
 from app.core.tenancy import TenantContext, tenant_session
 from app.db.models.tenancy import Firm, User
 from app.db.models.work import Invitation
+from app.domain.audit import service as audit
 from app.domain.firms import service
+from app.domain.users import accounts
 from app.engine.rag.corpus import CorpusManifest, LicenceNotConfirmed, load_corpus_document
 from app.engine.rag.embeddings.base import Embedder
 from app.engine.rag.embeddings.factory import get_embedder
 from app.integrations.email.base import EmailSender, get_email_sender
+from app.integrations.email.templates import link
 
 router = APIRouter(prefix="/platform", tags=["platform"])
 
@@ -71,7 +76,10 @@ async def create_firm(
         )
         firm_id = firm.id
     sent = await service.send_invitation_email(email, str(body.owner_email), body.name, token)
-    return {"id": str(firm_id), "slug": body.slug, "owner_invitation_emailed": sent}
+    out: dict[str, str | bool] = {"id": str(firm_id), "slug": body.slug, "owner_invitation_emailed": sent}
+    if not sent:
+        out["owner_invite_link"] = link("accept-invite", token=token)  # hand this to the firm owner out of band
+    return out
 
 
 
@@ -94,3 +102,25 @@ async def load_corpus(
     except LicenceNotConfirmed as exc:
         raise ProblemError(422, "licence_not_confirmed", "Licence not confirmed", str(exc)) from exc
     return {"id": str(doc.id), "manifest_id": doc.manifest_id, "chunks": n}
+
+
+class ResetLinkIn(BaseModel):
+    email: EmailStr
+
+
+@router.post("/users/reset-link")
+async def issue_reset_link(body: ResetLinkIn, request: Request, ctx: Platform, factory: Factory) -> dict[str, str | int]:
+    """Account recovery while there is no email channel. The operator MUST verify the person's identity out of band first
+    (e.g. a call-back to a known number). The link is single use, expires in 30 minutes, ends all sessions on use, and does NOT
+    bypass MFA. The action is audited (the email address is recorded as a hash, never in clear)."""
+    if not has_permission(ctx.role, "platform.manage"):
+        raise Forbidden("Only platform admins can issue reset links.")
+    async with factory() as db:
+        created = await accounts.create_reset(db, body.email, client_ip(request))
+        await db.commit()
+    who = hashlib.sha256(body.email.strip().lower().encode()).hexdigest()[:16]
+    async with tenant_session(factory, ctx) as adb:
+        await audit.record(adb, ctx, "platform.reset_link", target=f"user:{who}", meta={"found": created is not None})
+    if created is None:
+        raise NotFound("user")
+    return {"reset_link": link("reset-password", token=created[1]), "expires_in_minutes": settings.password_reset_ttl_minutes}

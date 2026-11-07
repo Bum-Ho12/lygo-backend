@@ -318,7 +318,7 @@ async def test_enforcement_does_not_apply_to_client_users_but_does_to_platform(a
 
 # ============================================================================================================== password reset
 async def test_password_reset_flow(api, database: PgConfig, outbox) -> None:  # type: ignore[no-untyped-def]
-    uid, _h, email = await make_user(api, "reset")
+    _uid, _h, email = await make_user(api, "reset")
     session = (await login(api, email)).json()
     same = {"status": "If an account exists for that address, a reset link has been sent."}
     unknown = await api.post("/v1/auth/password/forgot", json={"email": "nobody@example.com"})
@@ -336,7 +336,6 @@ async def test_password_reset_flow(api, database: PgConfig, outbox) -> None:  # 
     assert (await login(api, email, PASSWORD)).status_code == 401 and (await login(api, email, new)).status_code == 200
     assert (await api.post("/v1/auth/refresh", json={"refresh_token": session["refresh_token"]})).status_code == 401  # all sessions ended
     assert any("Your password was changed" in m.body for m in outbox.sent if m.to == email)
-    assert owner_sql(database, "SELECT email_verified_at IS NOT NULL FROM users WHERE id=%s", uid)[0][0] is True
 
 
 async def test_reset_links_expire_and_newer_links_replace_older(api, database: PgConfig, outbox) -> None:  # type: ignore[no-untyped-def]

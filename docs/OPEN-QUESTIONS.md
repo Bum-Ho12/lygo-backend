@@ -9,7 +9,7 @@ Decisions and facts we still need. Update this file as they are resolved.
 | 3 | RumptyCloud SLA, backups, data retention for AI inference, DPA / Kenyan Standard Clauses | Founders + Eng | Single region in Lagos; cross-border transfer obligations |
 | 4 | Kenya-resident option: which Kenyan provider for BYO / hybrid? | Founders | Firms with strict residency needs |
 | 5 | NCLR (Kenya Law) commercial licence for laws and case law | Founders + Legal | Website content is licensed non-commercially |
-| 6 | ~~Embedding model~~ **Decided: Voyage AI `voyage-law-2`** (needs a DPA/sub-processor entry, US transfer). **Still open: the chat LLM** (Rumpty-hosted vs external API). | Engineering | Quality, cost, data transfer, latency |
+| 6 | ~~Embedding model~~ **Decided: Voyage AI `voyage-law-2`** (needs a DPA/sub-processor entry, US transfer). **Chat LLM: Claude via the Anthropic API (decided; default `claude-opus-5-5`, Sonnet 5.5 is the cheaper option to evaluate)** - needs a DPA/sub-processor entry and a transfer basis. | Engineering | Quality, cost, data transfer, latency |
 | 7 | Will clients outside firms (public consumers) be served? When? | Product | Advocates Act s.34 / s.33 exposure, different onboarding |
 | 8 | Pricing: per firm seat, per client, per document, usage-based AI? | Founders | Billing design |
 | 9 | Advocate review policy for client-visible AI answers — default on or off? **Interim:** ON (and the client assistant is OFF until a firm enables it); both are per-firm settings. Revisit with pilot firms. | Product + pilot firms | Risk vs speed |

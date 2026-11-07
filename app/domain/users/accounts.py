@@ -25,6 +25,8 @@ async def revoke_all_sessions(db: AsyncSession, user_id: uuid.UUID) -> None:
 
 async def send_alert(email: EmailSender, to: str, event: str) -> None:
     """Best-effort security notification; a delivery failure must never block the security action itself."""
+    if not getattr(email, "delivers", True):
+        return  # email-less mode: nothing to notify through
     try:
         await email.send(render("security_alert", to, {"event": event, "when": datetime.now(UTC).strftime("%Y-%m-%d %H:%M"), "link": link("forgot-password")}))
     except (EmailError, EmailTemplateError) as exc:
@@ -44,6 +46,8 @@ async def create_reset(db: AsyncSession, email_addr: str, ip: str | None) -> tup
 
 
 async def send_reset_email(email: EmailSender, to: str, token: str) -> None:
+    if not getattr(email, "delivers", True):
+        return
     try:
         await email.send(render("password_reset", to, {"minutes": str(settings.password_reset_ttl_minutes), "link": link("reset-password", token=token)}))
     except (EmailError, EmailTemplateError) as exc:
@@ -59,7 +63,5 @@ async def redeem_reset(db: AsyncSession, token: str, new_password: str) -> User:
     assert user is not None
     row.used_at = datetime.now(UTC)
     user.password_hash, user.password_changed_at = hash_password(new_password), datetime.now(UTC)
-    if user.email_verified_at is None:
-        user.email_verified_at = datetime.now(UTC)  # the link only reached their inbox
     await revoke_all_sessions(db, user.id)
     return user

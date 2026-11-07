@@ -12,6 +12,20 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).parents[1]
+
+_CREDENTIALS = ("anthropic_api_key", "voyage_api_key", "thrivewave_api_key", "thrivewave_base_url", "smtp_host", "smtp_username", "smtp_password", "llm_api_key", "llm_base_url")
+
+
+@pytest.fixture(autouse=True)
+def _hermetic_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tests never use real third-party credentials from a developer's .env (they would spend money and make results
+    non-deterministic). The AI evaluation can opt in explicitly: `EVAL_REAL_MODEL=1 make eval`."""
+    from app.core.config import settings
+
+    if os.environ.get("EVAL_REAL_MODEL"):
+        return
+    for name in _CREDENTIALS:
+        monkeypatch.setattr(settings, name, "")
 TEST_DB = "lygo_test"
 
 

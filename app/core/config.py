@@ -54,6 +54,10 @@ class Settings(BaseSettings):
     ocr_langs: str = "eng+swa"
     ocr_review_threshold: float = 0.80
 
+    anthropic_api_key: str = ""
+    anthropic_model: str = "claude-opus-5-5"  # set ANTHROPIC_MODEL=claude-sonnet-5-5 to halve the price once quality is evaluated
+    anthropic_effort: str = "medium"  # low | medium | high | xhigh | max ("" = API default). Opus 5.5 always thinks; effort is the only dial
+    anthropic_fallbacks: bool = True  # server-side refusal fallback (beta); ignored for models that do not support it
     llm_model_chat: str = ""
     llm_timeout_s: float = 60.0
     ai_monthly_message_cap: int = 2000  # per firm; assistant messages

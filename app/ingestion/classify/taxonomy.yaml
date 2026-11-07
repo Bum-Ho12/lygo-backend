@@ -22,10 +22,12 @@ types:
   tenancy_agreement:
     practice_area: property
     patterns:
-      - {p: "\\btenancy\\b", w: 3}
+      - {p: "\\btenanc(y|ies)\\b", w: 3}
       - {p: "\\b(landlord|tenant|lessor|lessee)\\b", w: 2}
       - {p: "\\brent\\b", w: 1}
       - {p: "\\bdeposit\\b", w: 1}
+      - {p: "\\b(lease (agreement|deed)|this lease)\\b", w: 4}
+      - {p: "\\b(the landlord lets|demised premises|let(s)? to the tenant)\\b", w: 2}
   service_agreement:
     practice_area: general
     patterns:
@@ -58,6 +60,40 @@ types:
     patterns:
       - {p: "\\bdear (sir|madam|mr|mrs|ms|dr)\\b", w: 3}
       - {p: "\\byours (faithfully|sincerely)\\b", w: 3}
+  # Court decisions. Must outscore court_pleading, which also matches the court header and party roles.
+  judgment:
+    practice_area: litigation
+    patterns:
+      - {p: "\\bcoram\\b", w: 4}
+      - {p: "(?m)^\\s*(judgment|ruling)\\s*$", w: 3}
+      - {p: "\\b(judgment|ruling) (is )?(delivered|dated|read)\\b|\\bdelivered (on|at|this|virtually)\\b", w: 2}
+      - {p: "\\bissues? (for|before the court for) determination\\b", w: 3}
+      - {p: "\\[\\d{4}\\]\\s*(eKLR|KE[A-Z]{2,6}\\s+\\d+)", w: 2}
+      - {p: "\\b(no order as to costs|costs (of the|shall|are awarded|follow the event))\\b", w: 2}
+      - {p: "\\b(lady )?justice\\b|\\b(principal|senior|chief) (resident )?magistrate\\b|\\b(vice[- ])?chair(person)?\\b", w: 1}
+  court_order:
+    practice_area: litigation
+    patterns:
+      - {p: "(?m)^\\s*(order|decree|interim orders?)\\s*$", w: 3}
+      - {p: "\\bit is (hereby )?ordered\\b", w: 4}
+      - {p: "\\bgiven under my hand\\b", w: 3}
+      - {p: "\\bseal of the (court|tribunal)\\b", w: 2}
+      - {p: "\\bcertified true copy\\b", w: 1}
+  claim_form:
+    practice_area: insurance
+    patterns:
+      - {p: "\\bclaim form\\b", w: 5}
+      - {p: "\\b(date|place|time|description|cause) (and time )?of (the )?(loss|accident|incident)\\b", w: 2}
+      - {p: "\\bestimated (value|amount|cost) of (the )?(loss|damage|claim)\\b", w: 2}
+      - {p: "\\bi (hereby )?declare that\\b", w: 1}
+  medical_report:
+    practice_area: general
+    patterns:
+      - {p: "\\bmedical (report|certificate|examination report)\\b", w: 5}
+      - {p: "\\bdiagnos(is|ed)\\b", w: 2}
+      - {p: "\\bpatient\\b", w: 1}
+      - {p: "\\b(admitted|discharged) on\\b", w: 1}
+      - {p: "\\b(consultant|medical officer|attending physician)\\b", w: 1}
 # Sensitive personal data markers (Kenya DPA s.2): health, children, biometrics, ethnicity, religion, sexual life.
 sensitive_markers:
   - "\\b(diagnos|medical|hiv|pregnan|disabilit|prescription|patient)\\w*"

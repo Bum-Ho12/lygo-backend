@@ -1,0 +1,14 @@
+MEMBER CONTRIBUTION STATEMENT (SAMPLE LAYOUT)
+Member: Brian Ochieng Otieno     Statement date: 10 March 2025
+Month | Employer | Amount (KES) | Status
+Jan 2023 | Pwani Logistics Ltd | 2,160 | Received
+Feb 2023 | Pwani Logistics Ltd | 2,160 | Received
+Mar 2023 | Pwani Logistics Ltd | 2,160 | Received
+Apr 2023 | Pwani Logistics Ltd | 0 | Not received
+May 2023 | Pwani Logistics Ltd | 0 | Not received
+Jun 2023 | Pwani Logistics Ltd | 0 | Not received
+Jul 2023 | Pwani Logistics Ltd | 0 | Not received
+Aug 2023 | Pwani Logistics Ltd | 0 | Not received
+... |  |  | 
+Feb 2025 | Pwani Logistics Ltd | 4,320 | Received (arrears)
+This statement is computer generated.
