@@ -9,14 +9,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.12", cache: pip }
-      - run: pip install -e ".[dev]"
-      - run: ruff check app tests
-      - run: mypy app
-      - run: bandit -q -r app -ll
-      - run: pip-audit --skip-editable
-      - run: pytest tests/unit -q
+      - uses: astral-sh/setup-uv@v5
+        with: { enable-cache: true }
+      - run: uv sync --frozen
+      - run: uv run ruff check app tests
+      - run: uv run mypy app
+      - run: uv run bandit -q -r app -ll
+      - run: uv run pip-audit --skip-editable
+      - run: uv run pytest tests/unit -q
 
   # Required check. Runs against a real Postgres with the non-owner app role (see scripts/init-db.sql).
   tenancy:
@@ -30,9 +30,9 @@ jobs:
           --health-cmd "pg_isready -U lygo_owner" --health-interval 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.12", cache: pip }
-      - run: pip install -e ".[dev]"
+      - uses: astral-sh/setup-uv@v5
+        with: { enable-cache: true }
+      - run: uv sync --frozen
       - run: PGPASSWORD=lygo_owner psql -h localhost -U lygo_owner -d lygo -f scripts/init-db.sql
-      - run: pytest tests/tenancy -q
+      - run: uv run pytest tests/tenancy tests/integration -q
         env: { REQUIRE_DB: "1" }

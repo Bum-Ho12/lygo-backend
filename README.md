@@ -30,7 +30,7 @@ Platform (Lygo operators)
 
 | Concern | Choice |
 |---|---|
-| API | Python 3.12, FastAPI, Pydantic v2 |
+| API | Python 3.12 (managed by [uv](https://docs.astral.sh/uv/)), FastAPI, Pydantic v2 |
 | Database | PostgreSQL 16 + pgvector, Row-Level Security for tenant isolation |
 | Background jobs | Celery + Redis (OCR, embedding, report generation) |
 | Object storage | S3-compatible (RumptyCloud Object Storage by default; firm BYO supported) |
@@ -91,7 +91,7 @@ docs/              design documentation (start with docs/02-architecture.md)
 ```bash
 cp .env.example .env
 docker compose up -d db redis minio
-pip install -e ".[dev]"
+uv sync             # installs Python 3.12 (.python-version) and all dependencies into .venv
 make dev            # API with reload: http://localhost:8000/docs
 make test           # unit tests need no Docker
 make migrate        # alembic upgrade head (owner role, DATABASE_MIGRATOR_URL)
