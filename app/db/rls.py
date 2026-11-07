@@ -29,6 +29,7 @@ def tenant_rls_sql(
     client_column: str | None = None,
     firm_only: bool = False,
     public_scope: bool = False,
+    shared_kb: bool = False,
 ) -> list[str]:
     """SQL enabling and forcing RLS on `table`.
 
@@ -36,6 +37,8 @@ def tenant_rls_sql(
         rows). Rows with a NULL value are hidden from client users.
     firm_only: client users see nothing (e.g. comparisons spanning several clients, ADR 0005).
     public_scope: also allow everyone to read rows with scope='public' and firm_id IS NULL.
+    shared_kb: client users may additionally READ (never write) rows with scope='firm_kb' AND
+        shared_with_clients, i.e. firm knowledge the firm chose to publish to its clients.
     """
     stmts = [
         f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY",
@@ -56,11 +59,20 @@ def tenant_rls_sql(
             f"USING (app_client_id() IS NULL) WITH CHECK (app_client_id() IS NULL)"
         )
     elif client_column:
+        own = f"app_client_id() IS NULL OR {client_column} = app_client_id()"
         # Public-corpus rows have no client; client users must still be able to read them.
-        public = " OR (scope = 'public' AND firm_id IS NULL)" if public_scope else ""
-        stmts.append(
-            f"CREATE POLICY client_isolation ON {table} AS RESTRICTIVE FOR ALL "
-            f"USING (app_client_id() IS NULL OR {client_column} = app_client_id(){public}) "
-            f"WITH CHECK (app_client_id() IS NULL OR {client_column} = app_client_id())"
-        )
+        read_extra = " OR (scope = 'public' AND firm_id IS NULL)" if public_scope else ""
+        if shared_kb:
+            read_extra += " OR (scope = 'firm_kb' AND shared_with_clients)"
+        if read_extra:
+            # Split by command so the extra visibility is read-only.
+            stmts.append(f"CREATE POLICY client_isolation_select ON {table} AS RESTRICTIVE FOR SELECT USING ({own}{read_extra})")
+            stmts.append(f"CREATE POLICY client_isolation_insert ON {table} AS RESTRICTIVE FOR INSERT WITH CHECK ({own})")
+            stmts.append(f"CREATE POLICY client_isolation_update ON {table} AS RESTRICTIVE FOR UPDATE USING ({own}) WITH CHECK ({own})")
+            stmts.append(f"CREATE POLICY client_isolation_delete ON {table} AS RESTRICTIVE FOR DELETE USING ({own})")
+        else:
+            stmts.append(
+                f"CREATE POLICY client_isolation ON {table} AS RESTRICTIVE FOR ALL "
+                f"USING ({own}) WITH CHECK ({own})"
+            )
     return stmts

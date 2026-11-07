@@ -20,7 +20,7 @@ comparison, insurance, advisory and general speed-up of firm work. Practice area
 | A5 | Auth ([ADR 0006](adr/0006-auth-bootstrap.md)) | partial: register/login/refresh (rotation + reuse detection)/logout, `/me`, role-permission matrix, tenant context from token + path firm, `GET/PATCH /firms/{id}`, `GET /firms/{id}/clients`. Todo: TOTP MFA, SMS OTP, invitations, SSO, API keys, login rate limiting, restrict `users` column access |
 | A6 | Append-only audit log (privileges + trigger; `domain/audit.record`) | done |
 | B | Members and invitations, clients (+ portal invitations), matters, deadlines, tasks, platform firm bootstrap | done (migration 0003, 20 API + 3 DB-level tests). Todo: consents, `matter_facts`, pack installation, suspend/revoke portal users |
-| C | Storage adapters; both ingest doors; OCR/parse pipeline; structure tree, typed fields, entities, versions | partial: structure parser done (`app/ingestion/structure.py`) |
+| C | Storage, both ingest doors, ingestion pipeline | partial (see below): storage adapters (local, S3), both upload endpoints, sniffing, malware scan, dedup, versions, OCR interface, parse, structure, classify, rules, flags, review queue, on-demand comparison endpoint. Todo: typed `document_fields`, entities, BYO destinations + policies, envelope encryption, bulk ZIP, presigned uploads, SSE progress, email-in |
 | D | Packs engine: rules + registry, `core_contract` and `insurance` draft packs | partial: rules engine, registry and 2 draft packs done; extraction/playbooks todo |
 | D2 | Deterministic comparison engine | partial: aligner, field diff and hints done; persistence, API, jobs todo |
 | E1 | RAG: chunking, embeddings, hybrid retrieval, corpus loader and versioning | todo |
@@ -48,3 +48,21 @@ comparison, insurance, advisory and general speed-up of firm work. Practice area
 ## Blocked on decisions or third parties
 LLM and embedding model (OPEN-QUESTIONS #6), Thrivewave API (#2), NCLR licence (#5), RumptyCloud terms (#3).
 All are built behind interfaces with fakes so development continues.
+
+## Phase C status (ingestion)
+Implemented: `POST /knowledge/documents`, `POST /clients/{id}/documents`, `GET` lists, `GET /documents/{id}` (status timeline),
+`/content`, `/flags`, `PATCH /flags/{id}`, `POST /documents/{id}:reprocess`, `GET /review-queue`, `POST /comparisons`.
+Pipeline stages recorded in `ingest_events`: `start -> parse -> structure -> classify -> rules`. Rules run on client documents only.
+
+**Verified vs not verified**
+- Verified in tests: S3 adapter against moto (not real MinIO), clamd protocol against a fake server (not real ClamAV),
+  OCR through a fake engine (no Tesseract on the dev machine), PDF/DOCX/text extraction, password-protected PDFs.
+- Not yet exercised: real Tesseract accuracy (Swahili models, handwriting), real ClamAV, MinIO/RumptyCloud, Celery worker
+  with Redis (`INGEST_MODE=celery` path is written but untested), large-file performance (20-page / 2-minute target).
+
+**Security notes**
+- Uploads are type-sniffed from content (extension must agree), size-capped, scanned, and never stored when rejected.
+  Outside `local`, ingestion fails closed (503) unless `CLAMD_HOST` is configured. The dev scanner only knows EICAR.
+- Knowledge-base documents shared with clients are readable but not writable by clients (separate per-command RLS policies);
+  derived rows (pages, sections, flags) are never shared.
+- Audit inserts omit `RETURNING` so client users, who cannot read audit rows, can still generate audited events.

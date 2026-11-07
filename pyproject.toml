@@ -32,7 +32,17 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pytest>=8", "pytest-asyncio>=0.23", "testcontainers>=4.7", "ruff>=0.6", "mypy>=1.11", "bandit>=1.7", "pip-audit>=2.7", "types-PyYAML>=6.0"]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.23",
+    "testcontainers>=4.7",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "bandit>=1.7",
+    "pip-audit>=2.7",
+    "types-PyYAML>=6.0",
+    "moto[s3]>=5",
+]
 
 [tool.ruff]
 line-length = 100
@@ -55,7 +65,7 @@ python_version = "3.12"
 ignore_missing_imports = false
 
 [[tool.mypy.overrides]]
-module = ["celery", "celery.*"]
+module = ["celery", "celery.*", "boto3", "botocore", "botocore.*", "pytesseract", "pymupdf", "docx", "moto", "moto.*"]
 ignore_missing_imports = true
 
 [tool.setuptools.package-data]

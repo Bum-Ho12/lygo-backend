@@ -257,3 +257,60 @@ async def test_platform_may_insert_but_not_read_invitations(factory, world: Worl
                 text("INSERT INTO invitations (firm_id, email, role, token_hash, expires_at) VALUES (:f,'o@example.com','x',:h, now())"),
                 {"f": world.firm_b, "h": f"forged-{uuid.uuid4().hex}"},
             )
+
+
+# --- Phase C tables: documents (shared knowledge base is read-only for clients) -----------------------
+@pytest.fixture(scope="session")
+def doc_rows(database: PgConfig, world: World):  # type: ignore[no-untyped-def]
+    ids_: dict[str, uuid.UUID] = {}
+    with psycopg.connect(database.owner_dsn(TEST_DB), autocommit=True) as c:
+        def add(label: str, firm: uuid.UUID, client: uuid.UUID | None, scope: str, shared: bool = False) -> None:
+            did = uuid.uuid4()
+            ids_[label] = did
+            c.execute(
+                "INSERT INTO documents (id, firm_id, client_id, scope, title, original_filename, mime_type, size_bytes, sha256,"
+                " storage_destination_id, storage_key, shared_with_clients) VALUES (%s,%s,%s,%s,%s,'f.txt','text/plain',1,%s,'t',%s,%s)",
+                (did, firm, client, scope, label, uuid.uuid4().hex * 2, f"k/{did}", shared),
+            )
+            c.execute("INSERT INTO pages (firm_id, client_id, document_id, n, text) VALUES (%s,%s,%s,1,%s)", (firm, client, did, label))
+
+        add("a1_doc", world.firm_a, world.a1, "client")
+        add("a2_doc", world.firm_a, world.a2, "client")
+        add("a_kb_private", world.firm_a, None, "firm_kb")
+        add("a_kb_shared", world.firm_a, None, "firm_kb", shared=True)
+        add("b_kb_shared", world.firm_b, None, "firm_kb", shared=True)
+    return ids_
+
+
+async def test_client_reads_own_and_shared_kb_documents_only(factory, world: World, doc_rows) -> None:  # type: ignore[no-untyped-def]
+    ctx = TenantContext(firm_id=world.firm_a, user_id=world.user_a1, role="client_user", client_id=world.a1)
+    async with tenant_session(factory, ctx) as s:
+        assert await ids(s, "SELECT title FROM documents") == {"a1_doc", "a_kb_shared"}
+        # derived rows are NOT shared: a client sees pages of its own documents only, never the KB's text
+        assert await ids(s, "SELECT text FROM pages") == {"a1_doc"}
+
+
+async def test_client_cannot_modify_or_create_kb_documents(factory, world: World, doc_rows) -> None:  # type: ignore[no-untyped-def]
+    ctx = TenantContext(firm_id=world.firm_a, user_id=world.user_a1, role="client_user", client_id=world.a1)
+    async with tenant_session(factory, ctx) as s:
+        assert (await s.execute(text("UPDATE documents SET title='pwned' WHERE title='a_kb_shared'"))).rowcount == 0
+        assert (await s.execute(text("DELETE FROM documents WHERE title='a_kb_shared'"))).rowcount == 0
+        assert (await s.execute(text("UPDATE documents SET shared_with_clients=false WHERE title='a_kb_shared'"))).rowcount == 0
+    with pytest.raises(DBAPIError, match="row-level security"):
+        async with tenant_session(factory, ctx) as s:
+            await s.execute(text(
+                "INSERT INTO documents (firm_id, scope, title, original_filename, mime_type, size_bytes, sha256, storage_destination_id, storage_key)"
+                " VALUES (:f,'firm_kb','evil','f','text/plain',1,:h,'t','k')"), {"f": world.firm_a, "h": uuid.uuid4().hex * 2})
+    with pytest.raises(DBAPIError, match="row-level security"):  # and cannot file a document under a sibling client
+        async with tenant_session(factory, ctx) as s:
+            await s.execute(text(
+                "INSERT INTO documents (firm_id, client_id, scope, title, original_filename, mime_type, size_bytes, sha256, storage_destination_id, storage_key)"
+                " VALUES (:f,:c,'client','evil','f','text/plain',1,:h,'t','k')"), {"f": world.firm_a, "c": world.a2, "h": uuid.uuid4().hex * 2})
+
+
+async def test_firm_sees_all_own_documents_and_none_of_others(factory, world: World, doc_rows) -> None:  # type: ignore[no-untyped-def]
+    async with tenant_session(factory, firm_ctx(world, world.firm_a, world.user_a)) as s:
+        assert await ids(s, "SELECT title FROM documents") == {"a1_doc", "a2_doc", "a_kb_private", "a_kb_shared"}
+    async with tenant_session(factory, firm_ctx(world, world.firm_b, world.user_b)) as s:
+        assert await ids(s, "SELECT title FROM documents") == {"b_kb_shared"}
+        assert (await s.execute(text("UPDATE documents SET title='x' WHERE title='a_kb_shared'"))).rowcount == 0

@@ -19,6 +19,24 @@ class Settings(BaseSettings):
     jwt_access_ttl_min: int = 15
     jwt_refresh_ttl_days: int = 14
 
+    # --- storage (default Lygo-managed destination; per-firm BYO arrives with storage policies) ---
+    storage_backend: str = "local"  # local | s3
+    storage_local_dir: str = "data/objects"
+    storage_endpoint: str = ""
+    storage_region: str = "local"
+    storage_bucket: str = "lygo-local"
+    storage_access_key: str = ""
+    storage_secret_key: str = ""
+
+    # --- ingestion ---
+    max_upload_mb: int = 50
+    ingest_mode: str = "inline"  # inline (in-process, local/dev) | celery
+    clamd_host: str = ""  # required outside local: ingestion fails closed without a scanner
+    clamd_port: int = 3310
+    ocr_engine: str = "tesseract"
+    ocr_langs: str = "eng+swa"
+    ocr_review_threshold: float = 0.80
+
     llm_base_url: str = ""
     llm_api_key: str = ""
     embedding_dim: int = 1024

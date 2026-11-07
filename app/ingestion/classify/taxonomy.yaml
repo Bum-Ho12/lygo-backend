@@ -1,0 +1,66 @@
+# Document taxonomy: rules-first classification (model fallback arrives with the AI engine).
+# Each type lists weighted keyword patterns (regex, case-insensitive). Highest score wins if >= min_score.
+min_score: 3
+types:
+  insurance_policy:
+    practice_area: insurance
+    patterns:
+      - {p: "\\bpolic(y|ies)\\b", w: 1}
+      - {p: "\\binsur(er|ed|ance)\\b", w: 2}
+      - {p: "\\bsum insured\\b", w: 3}
+      - {p: "\\bpremium\\b", w: 2}
+      - {p: "\\bexclusions?\\b", w: 1}
+      - {p: "\\bpolicy schedule\\b", w: 2}
+  employment_contract:
+    practice_area: employment
+    patterns:
+      - {p: "\\bemployment (contract|agreement)\\b", w: 4}
+      - {p: "\\bemployee\\b", w: 1}
+      - {p: "\\bemployer\\b", w: 1}
+      - {p: "\\bprobation\\b", w: 2}
+      - {p: "\\bannual leave\\b", w: 2}
+  tenancy_agreement:
+    practice_area: property
+    patterns:
+      - {p: "\\btenancy\\b", w: 3}
+      - {p: "\\b(landlord|tenant|lessor|lessee)\\b", w: 2}
+      - {p: "\\brent\\b", w: 1}
+      - {p: "\\bdeposit\\b", w: 1}
+  service_agreement:
+    practice_area: general
+    patterns:
+      - {p: "\\bservice agreement\\b", w: 4}
+      - {p: "\\bservices?\\b", w: 1}
+      - {p: "\\bscope of (work|services)\\b", w: 2}
+      - {p: "\\bpayment terms?\\b", w: 1}
+  contract:
+    practice_area: general
+    patterns:
+      - {p: "\\bthis agreement\\b", w: 2}
+      - {p: "\\bthe parties\\b", w: 1}
+      - {p: "\\bgoverning law\\b", w: 2}
+      - {p: "\\bterminat(e|ion)\\b", w: 1}
+      - {p: "\\bindemnif", w: 1}
+  power_of_attorney:
+    practice_area: general
+    patterns:
+      - {p: "\\bpower of attorney\\b", w: 5}
+      - {p: "\\battorney[- ]in[- ]fact\\b", w: 2}
+      - {p: "\\bdonor\\b", w: 1}
+  court_pleading:
+    practice_area: litigation
+    patterns:
+      - {p: "\\bin the (high|magistrate'?s?|environment and land|employment and labour relations) court\\b", w: 4}
+      - {p: "\\b(plaintiff|defendant|petitioner|respondent|appellant)\\b", w: 2}
+      - {p: "\\bcivil (suit|case|appeal)\\b", w: 2}
+  letter:
+    practice_area: general
+    patterns:
+      - {p: "\\bdear (sir|madam|mr|mrs|ms|dr)\\b", w: 3}
+      - {p: "\\byours (faithfully|sincerely)\\b", w: 3}
+# Sensitive personal data markers (Kenya DPA s.2): health, children, biometrics, ethnicity, religion, sexual life.
+sensitive_markers:
+  - "\\b(diagnos|medical|hiv|pregnan|disabilit|prescription|patient)\\w*"
+  - "\\b(minor|child(ren)?|ward|guardian|custody)\\b"
+  - "\\b(fingerprint|biometric|dna)\\w*"
+  - "\\b(ethnic|tribe|religio)\\w*"

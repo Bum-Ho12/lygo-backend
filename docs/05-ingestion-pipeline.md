@@ -11,6 +11,9 @@
 Both firm/client endpoints accept: multipart upload, pre-signed URL upload (large files),
 bulk ZIP, and later email-in (`<firm>.<client>@in.lygo...`) and scanner hot-folders.
 
+> **Status:** the upload doors, validation, storage, OCR interface, parse, structure, classify and rules stages are
+> implemented (see [14](14-implementation-plan.md)). Chunk/embed (stage `indexed`) arrives with the RAG layer.
+
 ## Stages
 
 ```mermaid

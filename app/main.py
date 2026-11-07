@@ -4,7 +4,17 @@ import structlog
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1.routers import auth, clients, firms, health, invitations, matters, members, platform
+from app.api.v1.routers import (
+    auth,
+    clients,
+    documents,
+    firms,
+    health,
+    invitations,
+    matters,
+    members,
+    platform,
+)
 from app.core.config import settings
 from app.core.errors import install_error_handlers
 from app.core.logging import configure_logging
@@ -47,6 +57,7 @@ app.include_router(members.router, prefix="/v1")
 app.include_router(invitations.router, prefix="/v1")
 app.include_router(clients.router, prefix="/v1")
 app.include_router(matters.router, prefix="/v1")
+app.include_router(documents.router, prefix="/v1")
 app.include_router(platform.router, prefix="/v1")
 # Next routers (see docs/08-api-design.md): auth, me, platform, firms, members, clients,
 # matters, knowledge, client_documents, documents, flags, comparisons, fact_checks, chats,
