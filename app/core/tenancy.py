@@ -13,6 +13,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 PLATFORM_ROLES = frozenset({"platform_admin", "platform_support"})
+FIRMLESS_ROLES = PLATFORM_ROLES | {"system_sweeper"}  # trusted internal contexts without a tenant
 
 
 @dataclass(frozen=True)
@@ -23,7 +24,7 @@ class TenantContext:
     client_id: UUID | None = None  # set when the caller is a client user
 
     def __post_init__(self) -> None:
-        if self.firm_id is None and self.role not in PLATFORM_ROLES:
+        if self.firm_id is None and self.role not in FIRMLESS_ROLES:
             raise ValueError("firm_id is required for non-platform roles")
         if self.client_id is not None and self.firm_id is None:
             raise ValueError("client_id requires firm_id")

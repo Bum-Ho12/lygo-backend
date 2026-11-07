@@ -53,3 +53,10 @@ async def api(database: PgConfig, outbox, storage, ocr):  # type: ignore[no-unty
         yield c
     app.dependency_overrides.clear()
     await engine.dispose()
+
+
+@pytest.fixture
+async def factory(database: PgConfig):  # type: ignore[no-untyped-def]
+    engine = create_async_engine(database.app_url, poolclass=NullPool)
+    yield async_sessionmaker(engine, expire_on_commit=False)
+    await engine.dispose()

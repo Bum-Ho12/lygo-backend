@@ -26,7 +26,7 @@ comparison, insurance, advisory and general speed-up of firm work. Practice area
 | E1 | RAG: chunking, embeddings, hybrid retrieval, corpus loader and versioning | todo |
 | E2 | AI providers, prompts, orchestrator, guardrails, memory, chat, AI materiality layer | todo |
 | E3 | Fact-check, advisory memo, chronology (conflict check deferred) | todo |
-| F | Notifications, SMS (Thrivewave **blocked** on API docs), email, webhooks | todo |
+| F | Notifications, SMS, email, webhooks | partial: Thrivewave adapter (docs obtained, key verified without sending), template registry with privacy policy, quiet hours, quota, safe retry/claim logic, unsigned-DLR token scheme, notification audit list. Todo: OTP login flow, wiring triggers (document reviewed, deadlines), Celery beat for `send_due`, real email adapter, outbound webhooks, DPA with Thrivewave |
 | G | Reports, analytics, exports, offboarding | todo |
 | H | Observability, security testing, load tests, backups, launch checklist | todo |
 

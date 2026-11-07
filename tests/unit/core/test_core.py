@@ -30,6 +30,21 @@ def test_cursor_roundtrip_and_bad_cursor() -> None:
     assert clamp_limit(None) == 50 and clamp_limit(10_000) == 200 and clamp_limit(-5) == 1
 
 
+def test_env_file_from_example_parses(tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """Regression: `cp .env.example .env` must produce a loadable configuration."""
+    from pathlib import Path
+
+    example = (Path(__file__).parents[3] / ".env.example").read_text()
+    env = tmp_path / ".env"
+    env.write_text(example)
+    for key in ("FRONTEND_ORIGINS", "APP_ENV"):
+        monkeypatch.delenv(key, raising=False)
+    s = Settings(_env_file=env)
+    assert s.frontend_origins == ["http://localhost:3000"] and s.is_local
+    env.write_text("FRONTEND_ORIGINS=https://a.example, https://b.example\n")
+    assert Settings(_env_file=env).frontend_origins == ["https://a.example", "https://b.example"]
+
+
 def test_insecure_secret_rejected_outside_local() -> None:
     with pytest.raises(ValueError):
         Settings(app_env="production", jwt_secret="change-me")

@@ -314,3 +314,40 @@ async def test_firm_sees_all_own_documents_and_none_of_others(factory, world: Wo
     async with tenant_session(factory, firm_ctx(world, world.firm_b, world.user_b)) as s:
         assert await ids(s, "SELECT title FROM documents") == {"b_kb_shared"}
         assert (await s.execute(text("UPDATE documents SET title='x' WHERE title='a_kb_shared'"))).rowcount == 0
+
+
+# --- notifications: firm-only, token-scoped delivery-report access, read-only sweeper ------------------
+@pytest.fixture(scope="session")
+def notif_rows(database: PgConfig, world: World):  # type: ignore[no-untyped-def]
+    with psycopg.connect(database.owner_dsn(TEST_DB), autocommit=True) as c:
+        for firm in (world.firm_a, world.firm_b):
+            c.execute(
+                "INSERT INTO notifications (firm_id, template, template_version, to_masked, token_hash, deliver_after, status)"
+                " VALUES (%s,'otp',1,'+25471***78',%s, now() - interval '1 hour', 'queued')",
+                (firm, f"tok-{firm.hex}"),
+            )
+
+
+async def test_notifications_are_firm_only_and_isolated(factory, world: World, notif_rows) -> None:  # type: ignore[no-untyped-def]
+    async with tenant_session(factory, firm_ctx(world, world.firm_a, world.user_a)) as s:
+        assert await ids(s, "SELECT DISTINCT firm_id FROM notifications") == {world.firm_a}
+    client = TenantContext(firm_id=world.firm_a, user_id=world.user_a1, role="client_user", client_id=world.a1)
+    async with tenant_session(factory, client) as s:
+        assert await ids(s, "SELECT id FROM notifications") == set()
+    async with factory() as s:
+        assert (await s.execute(text("SELECT count(*) FROM notifications"))).scalar_one() == 0  # no context -> nothing
+
+
+async def test_dlr_token_policy_and_sweeper_are_narrow(factory, world: World, notif_rows) -> None:  # type: ignore[no-untyped-def]
+    async with factory() as s, s.begin():  # provider callback: no tenant, one token
+        await s.execute(text("SELECT set_config('app.dlr_token_hash', :h, true)"), {"h": f"tok-{world.firm_b.hex}"})
+        assert await ids(s, "SELECT firm_id FROM notifications") == {world.firm_b}
+        assert (await s.execute(text("UPDATE notifications SET status='delivered' WHERE token_hash = :h"), {"h": f"tok-{world.firm_a.hex}"})).rowcount == 0
+    sweeper = TenantContext(firm_id=None, user_id=world.platform_user, role="system_sweeper")
+    async with tenant_session(factory, sweeper) as s:
+        assert {world.firm_a, world.firm_b} <= await ids(s, "SELECT firm_id FROM notifications WHERE status='queued'")
+        assert (await s.execute(text("UPDATE notifications SET status='failed'"))).rowcount == 0  # read-only
+        assert (await s.execute(text("SELECT count(*) FROM clients"))).scalar_one() == 0  # and sees nothing else
+    platform = TenantContext(firm_id=None, user_id=world.platform_user, role="platform_admin")
+    async with tenant_session(factory, platform) as s:
+        assert (await s.execute(text("SELECT count(*) FROM notifications"))).scalar_one() == 0  # platform staff get no content

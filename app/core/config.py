@@ -1,5 +1,7 @@
+from typing import Annotated
+
 from pydantic import field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 _INSECURE_SECRETS = {"", "change-me"}
 
@@ -9,7 +11,7 @@ class Settings(BaseSettings):
 
     app_env: str = "local"  # local | staging | production
     log_level: str = "INFO"
-    frontend_origins: list[str] = ["http://localhost:3000"]
+    frontend_origins: Annotated[list[str], NoDecode] = ["http://localhost:3000"]  # comma-separated in env
 
     database_url: str = "postgresql+asyncpg://lygo_app:lygo_app@localhost:5432/lygo"
     database_migrator_url: str = "postgresql+psycopg://lygo_owner:lygo_owner@localhost:5432/lygo"
@@ -41,6 +43,9 @@ class Settings(BaseSettings):
     llm_api_key: str = ""
     embedding_dim: int = 1024
 
+    api_base_url: str = ""  # public URL of this API; used to build SMS delivery-report callbacks
+    sms_max_segments: int = 3
+    sms_monthly_quota: int = 500  # per firm; Thrivewave has no balance API so metering is ours
     thrivewave_base_url: str = ""
     thrivewave_api_key: str = ""
     thrivewave_sender_id: str = ""
