@@ -72,6 +72,37 @@ def install_error_handlers(app: FastAPI) -> None:
         resp.headers["Retry-After"] = "5"
         return resp
 
+    # Safety net for third-party outages that escape a call site: always a clean, retryable 503, never a stack-trace 500.
+    from app.engine.ai.providers.base import LlmError, LlmRefused
+    from app.engine.rag.embeddings.base import EmbeddingError
+    from app.integrations.email.base import EmailError
+    from app.integrations.sms.base import SmsError
+    from app.storage.base import ObjectNotFound, StorageError
+
+    _OUTAGES: list[tuple[type[Exception], str, str]] = [
+        (StorageError, "storage_unavailable", "Document storage is unavailable. Please try again shortly."),
+        (EmbeddingError, "search_unavailable", "Search is temporarily unavailable. Please try again shortly."),
+        (LlmError, "ai_unavailable", "The assistant is temporarily unavailable. Please try again shortly."),
+        (SmsError, "sms_unavailable", "Text messages cannot be sent right now. Please try again shortly."),
+        (EmailError, "email_unavailable", "Email cannot be sent right now. Please try again shortly."),
+    ]
+
+    def _outage_handler(code: str, detail: str):  # type: ignore[no-untyped-def]
+        async def handler(request: Request, exc: Exception) -> JSONResponse:
+            if isinstance(exc, ObjectNotFound):
+                return _problem(request, 404, "not_found", "Not found", "The requested file was not found.")
+            if isinstance(exc, LlmRefused):
+                return _problem(request, 422, "ai_declined", "Request declined", "The assistant declined this request.")
+            structlog.get_logger().error("dependency.unavailable", code=code, error=type(exc).__name__, path=request.url.path)
+            resp = _problem(request, 503, code, "Service unavailable", detail)
+            resp.headers["Retry-After"] = "10"
+            return resp
+
+        return handler
+
+    for exc_type, code, detail in _OUTAGES:
+        app.add_exception_handler(exc_type, _outage_handler(code, detail))
+
     @app.exception_handler(Exception)
     async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
         # Never leak internals; details go to logs only.
