@@ -15,10 +15,10 @@ comparison, insurance, advisory and general speed-up of firm work. Practice area
 |---|---|---|
 | A1 | Lint/type baseline, CI workflow, Makefile | done |
 | A2 | Config validation, structured logging with PII masking, problem+json, cursor pagination, request IDs, liveness/readiness | done |
-| A3 | DB layer: engines, base models, Alembic, `enable_tenant_rls` helper | todo (needs Docker/Postgres to verify) |
-| A4 | Tenancy dependency; fix `tenancy.py` and RLS sketches (see "Known design fixes") | todo (needs Postgres) |
+| A3 | DB layer: engines, base models, Alembic, `tenant_rls_sql` helper, migration 0001 (identity, firms, clients, matters, audit) | done (verified on Postgres 17 + pgvector) |
+| A4 | Tenant session (`tenant_session`), fixed RLS policies, isolation test suite (16 tests) | done; the request dependency that derives the context from a JWT lands with A5 |
 | A5 | Auth, MFA, RBAC, API keys ([ADR 0006](adr/0006-auth-bootstrap.md)) | todo |
-| A6 | Append-only audit log | todo |
+| A6 | Append-only audit log (privileges + trigger; `domain/audit.record`) | done |
 | B | Firms, members, clients, matters, deadlines, consents, tasks, pack installation | todo |
 | C | Storage adapters; both ingest doors; OCR/parse pipeline; structure tree, typed fields, entities, versions | partial: structure parser done (`app/ingestion/structure.py`) |
 | D | Packs engine: rules + registry, `core_contract` and `insurance` draft packs | partial: rules engine, registry and 2 draft packs done; extraction/playbooks todo |
@@ -30,11 +30,12 @@ comparison, insurance, advisory and general speed-up of firm work. Practice area
 | G | Reports, analytics, exports, offboarding | todo |
 | H | Observability, security testing, load tests, backups, launch checklist | todo |
 
-## Known design fixes (apply when implementing A3/A4)
-- `tenancy.py` calls `session.begin()`; this fails if the session already autobegan. Design the session factory and request dependency around one explicit transaction.
-- RLS policies must use `current_setting('app.firm_id', true)` with `NULLIF`, and allow `scope = 'public'` rows (where `firm_id IS NULL`).
+## Known design fixes (A3/A4 items applied; remaining items open)
+- ~~`tenancy.py` session handling~~ fixed: `tenant_session(factory, ctx)` owns one explicit transaction.
+- ~~RLS policies~~ fixed: helper functions use `NULLIF(current_setting(.., true), '')`; `public_scope` allows `scope='public'` rows for firm *and* client users (the isolation tests caught client users being blocked from public law).
 - `vector(N)` is fixed per migration: choose the embedding dimension before the chunks migration.
-- Add a platform role/context and a break-glass path to RLS; `platform_admin` must not see content by default.
+- Platform context done (platform roles manage `firms` and see no firm content). Break-glass support sessions still todo.
+- `users` is readable by the app role in full (ADR 0006). Before auth ships, restrict via column grants/views so one tenant cannot enumerate other users.
 - Celery: align queue names (`ingest`, `ai`, `notify`, `sms`) across `task_routes`, compose and Dockerfile; run OCR in its own worker image.
 - Comparison outputs spanning two clients are firm-role-only (ADR 0005).
 

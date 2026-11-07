@@ -3,6 +3,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       tesseract-ocr tesseract-ocr-eng libmagic1 && rm -rf /var/lib/apt/lists/*
 WORKDIR /srv
 COPY pyproject.toml .
+COPY alembic.ini .
 COPY app ./app
 RUN pip install --no-cache-dir .
 RUN useradd -m lygo

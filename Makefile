@@ -22,4 +22,4 @@ fix:
 	ruff check app tests --fix
 
 migrate:
-	alembic upgrade head
+	alembic upgrade head   # uses DATABASE_MIGRATOR_URL (owner role)

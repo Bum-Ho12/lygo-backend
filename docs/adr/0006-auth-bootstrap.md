@@ -1,6 +1,6 @@
 # ADR 0006 — Identity tables sit outside tenant RLS
 
-- Status: Proposed (to be confirmed when Phase A5 is implemented against a real database)
+- Status: Proposed (identity tables are in migration 0001 without RLS; confirm when auth lands)
 - Date: 2026-11-07
 
 ## Context

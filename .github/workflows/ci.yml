@@ -35,3 +35,4 @@ jobs:
       - run: pip install -e ".[dev]"
       - run: PGPASSWORD=lygo_owner psql -h localhost -U lygo_owner -d lygo -f scripts/init-db.sql
       - run: pytest tests/tenancy -q
+        env: { REQUIRE_DB: "1" }

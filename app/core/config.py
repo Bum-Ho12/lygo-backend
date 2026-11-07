@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     frontend_origins: list[str] = ["http://localhost:3000"]
 
     database_url: str = "postgresql+asyncpg://lygo_app:lygo_app@localhost:5432/lygo"
+    database_migrator_url: str = "postgresql+psycopg://lygo_owner:lygo_owner@localhost:5432/lygo"
     redis_url: str = "redis://localhost:6379/0"
 
     jwt_secret: str = "change-me"

@@ -94,7 +94,8 @@ docker compose up -d db redis minio
 pip install -e ".[dev]"
 make dev            # API with reload: http://localhost:8000/docs
 make test           # unit tests need no Docker
-# alembic upgrade head   (migrations arrive with Phase A3; not available yet)
+make migrate        # alembic upgrade head (owner role, DATABASE_MIGRATOR_URL)
+make tenancy        # tenant-isolation tests (need Postgres; REQUIRE_DB=1 fails instead of skipping)
 ```
 
 ## Contributing / Security
