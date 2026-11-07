@@ -24,7 +24,7 @@ comparison, insurance, advisory and general speed-up of firm work. Practice area
 | D | Packs engine: rules + registry, `core_contract` and `insurance` draft packs | partial: rules engine, registry and 2 draft packs done; extraction/playbooks todo |
 | D2 | Deterministic comparison engine | partial: aligner, field diff and hints done; persistence, API, jobs todo |
 | E1 | RAG: chunking, embeddings, hybrid retrieval, corpus loader and versioning | done except real-model validation: `chunks` (pgvector HNSW + GIN full text, RLS), statute/clause chunkers, hashing + OpenAI-compatible embedders, RRF hybrid search with as-at filtering, citation objects, corpus loader (licence gate, version supersession) + platform endpoint + CLI, indexing stage in the pipeline, search endpoints. Todo: reranker, real embedding model + quality evaluation, judgment chunker, chunk-table partitioning, re-embedding migration tooling |
-| E2 | AI providers, prompts, orchestrator, guardrails, memory, chat, AI materiality layer | todo |
+| E2 | AI providers, prompts, orchestrator, guardrails, memory, chat | done against a fake model (see "Phase E2 status"); NOT validated with a real LLM. Todo: AI materiality labels for comparisons (E3), drafting/case-builder tasks, model-based advice classifier, entailment checking, golden-set evaluation on a real model |
 | E3 | Fact-check, advisory memo, chronology (conflict check deferred) | todo |
 | F | Notifications, SMS, email, webhooks | partial: Thrivewave adapter (docs obtained, key verified without sending), template registry with privacy policy, quiet hours, quota, safe retry/claim logic, unsigned-DLR token scheme, notification audit list. Todo: OTP login flow, wiring triggers (document reviewed, deadlines), Celery beat for `send_due`, real email adapter, outbound webhooks, DPA with Thrivewave |
 | G | Reports, analytics, exports, offboarding | todo |
@@ -95,3 +95,30 @@ reload, indexing replaced on reprocess, embedding outage leaves the parsed docum
   positives on real documents; a model fallback is planned with the AI engine.
 - **SSE progress:** `GET /documents/{id}/events` (resumable with `?after=` / `Last-Event-ID`, ends with `event: done`).
   Implemented by polling the database (default 0.5 s), not by push; adequate for tens of concurrent viewers.
+
+## Phase E2 status (AI engine)
+**Built:** provider interface (OpenAI-compatible + deterministic fakes), versioned prompts (`explain-v1`, `research-v1`, `summarise-v1`),
+orchestrator (retrieve -> prompt -> LLM -> verify -> one retry -> abstain), guardrails, chat API (JSON and SSE), approval workflow,
+per-firm AI settings, matter facts, rolling conversation summary, document summaries, monthly message cap, golden-set harness (`make eval`).
+
+**Guardrails and how far they go (read before trusting them)**
+| Guardrail | What it enforces | What it does NOT do |
+|---|---|---|
+| Citation verification | every `[S#]` marker maps to a supplied source; sections/case names/report citations must appear in the sources; uncited substantive sentences are dropped; no valid citation left => abstain | It does **not** check that a cited sentence is *entailed* by the source. A model could cite S1 and misstate what S1 says. Entailment checking (NLI/LLM judge) is not built. |
+| Grounding | abstain unless a passage covers >= 40% of the question's terms or similarity >= `RAG_MIN_SIMILARITY` | Thresholds are tuned for the hashing embedder; they must be re-tuned for the real model. |
+| Advice boundary | regex detection of decision/prediction/drafting requests (English) -> general explanation + escalation task; advisory phrasing stripped from answers; disclaimer always appended | Rule-based: paraphrases and Swahili will slip through. A model-based classifier is needed. |
+| Approval mode | default ON; pending/rejected replies are invisible to clients **in the database** (RLS); clients cannot insert, edit or delete AI replies | An approved answer is only as good as the advocate's review. |
+| Prompt injection | instruction-like spans in sources/questions/firm notes are replaced; delimiters stripped | Pattern based: novel phrasings are not caught. Mitigated by the rule that only cited, verified statements survive and by no tool use. |
+| Memory | last 8 turns + rolling summary; only advocate-confirmed facts are given to the model | AI-proposed facts are not built yet. |
+
+**Design decisions to revisit**
+- SSE carries progress events and then the finished verified message, **not tokens**: answers are verified before release, so the "first token < 3 s p95" target is not met by design.
+- `citations` are stored on the message (JSON) rather than in the separate table sketched in doc 09.
+- The question is stored before the model runs; if the model is down the user keeps a dangling question and can retry.
+- Document summaries are not counted against the monthly cap and are not stored as chat messages (audited only).
+- Client chat defaults: chatbot OFF, approval ON (OPEN-QUESTIONS #9 answered conservatively until pilot firms say otherwise).
+
+**Found by testing and fixed during this phase:** full-text search used AND semantics so natural-language questions never matched
+(E1 bug); citation markers placed after the full stop were attached to the next sentence; the case-name check rejected legitimate
+cases; the advice filter wrongly stripped policy obligations ("you must pay by..."); clients could delete/alter released AI replies
+at the SQL level (now blocked by RLS).

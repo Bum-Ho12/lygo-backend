@@ -481,3 +481,84 @@ def test_only_one_primary_destination_per_firm(database: PgConfig, world: World)
                       (world.firm_b, n, b"\x01x", n == "p1"))
         with pytest.raises(psycopg.errors.UniqueViolation):
             c.execute("UPDATE storage_destinations SET is_primary = true WHERE firm_id=%s AND name='p2'", (world.firm_b,))
+
+
+# --- chats / messages / matter facts: approval gating is enforced by the database ------------------------------------
+@pytest.fixture(scope="session")
+def chat_rows(database: PgConfig, world: World):  # type: ignore[no-untyped-def]
+    out: dict[str, uuid.UUID] = {}
+    with psycopg.connect(database.owner_dsn(TEST_DB), autocommit=True) as c:
+        def chat(label: str, firm: uuid.UUID, client: uuid.UUID | None, user: uuid.UUID) -> uuid.UUID:
+            cid = c.execute(
+                "INSERT INTO chats (firm_id, client_id, user_id, audience, title) VALUES (%s,%s,%s,%s,%s) RETURNING id",
+                (firm, client, user, "client" if client else "advocate", label),
+            ).fetchone()[0]
+            out[label] = cid
+            return cid
+
+        a1 = chat("chat-a1", world.firm_a, world.a1, world.user_a1)
+        a2 = chat("chat-a2", world.firm_a, world.a2, world.user_a)
+        adv = chat("chat-adv", world.firm_a, None, world.user_a)
+        b1 = chat("chat-b1", world.firm_b, world.b1, world.user_b)
+        for cid, firm, client in ((a1, world.firm_a, world.a1), (a2, world.firm_a, world.a2), (adv, world.firm_a, None), (b1, world.firm_b, world.b1)):
+            c.execute("INSERT INTO messages (firm_id, client_id, chat_id, role, content) VALUES (%s,%s,%s,'user',%s)", (firm, client, cid, f"q-{cid}"))
+        for label, status in (("pending", "pending"), ("approved", "approved"), ("rejected", "rejected"), ("plain", "not_required")):
+            c.execute(
+                "INSERT INTO messages (firm_id, client_id, chat_id, role, content, approval_status) VALUES (%s,%s,%s,'assistant',%s,%s)",
+                (world.firm_a, world.a1, a1, f"reply-{label}", status),
+            )
+    return out
+
+
+async def test_clients_never_see_unreleased_replies_or_other_chats(factory, world: World, chat_rows) -> None:  # type: ignore[no-untyped-def]
+    client_a1 = TenantContext(firm_id=world.firm_a, user_id=world.user_a1, role="client_user", client_id=world.a1)
+    async with tenant_session(factory, client_a1) as s:
+        assert await ids(s, "SELECT title FROM chats WHERE title LIKE 'chat-%'") == {"chat-a1"}  # not a2, not the advocate chat, not firm B
+        seen = await ids(s, "SELECT content FROM messages WHERE chat_id = :c", c=chat_rows["chat-a1"])
+        assert seen == {f"q-{chat_rows['chat-a1']}", "reply-approved", "reply-plain"}  # pending and rejected replies are invisible
+        assert (await s.execute(text("UPDATE messages SET approval_status='approved' WHERE content='reply-pending'"))).rowcount == 0  # cannot self-approve
+        assert (await s.execute(text("DELETE FROM messages WHERE content='reply-approved'"))).rowcount == 0  # replies are the audit record
+        assert (await s.execute(text("UPDATE messages SET content='tampered' WHERE content='reply-approved'"))).rowcount == 0
+        assert (await s.execute(text("DELETE FROM chats WHERE title='chat-a1'"))).rowcount == 0
+    async with tenant_session(factory, firm_ctx(world, world.firm_a, world.user_a)) as s:
+        every = await ids(s, "SELECT content FROM messages WHERE chat_id = :c", c=chat_rows["chat-a1"])
+        assert {"reply-pending", "reply-rejected", "reply-approved", "reply-plain"} <= every  # the firm keeps the full record
+        assert await ids(s, "SELECT title FROM chats WHERE title LIKE 'chat-%'") == {"chat-a1", "chat-a2", "chat-adv"}
+    async with tenant_session(factory, firm_ctx(world, world.firm_b, world.user_b)) as s:
+        assert await ids(s, "SELECT title FROM chats WHERE title LIKE 'chat-%'") == {"chat-b1"}
+
+
+async def test_message_constraints_and_client_write_limits(factory, database: PgConfig, world: World, chat_rows) -> None:  # type: ignore[no-untyped-def]
+    client_a1 = TenantContext(firm_id=world.firm_a, user_id=world.user_a1, role="client_user", client_id=world.a1)
+    with pytest.raises(DBAPIError, match="row-level security"):  # a client cannot write into a sibling's chat
+        async with tenant_session(factory, client_a1) as s:
+            await s.execute(text("INSERT INTO messages (firm_id, client_id, chat_id, role, content) VALUES (:f,:c,:chat,'user','x')"),
+                            {"f": world.firm_a, "c": world.a2, "chat": chat_rows["chat-a2"]})
+    for role, approval in (("assistant", "approved"), ("user", "approved")):  # a client may not forge a released AI reply
+        with pytest.raises(DBAPIError, match="row-level security"):
+            async with tenant_session(factory, client_a1) as s:
+                await s.execute(
+                    text("INSERT INTO messages (firm_id, client_id, chat_id, role, content, approval_status) VALUES (:f,:c,:chat,:r,'forged',:a)"),
+                    {"f": world.firm_a, "c": world.a1, "chat": chat_rows["chat-a1"], "r": role, "a": approval},
+                )
+    async with tenant_session(factory, client_a1) as s:  # but asking a plain question in their own chat works
+        await s.execute(text("INSERT INTO messages (firm_id, client_id, chat_id, role, content) VALUES (:f,:c,:chat,'user','my question')"),
+                        {"f": world.firm_a, "c": world.a1, "chat": chat_rows["chat-a1"]})
+    with psycopg.connect(database.owner_dsn(TEST_DB), autocommit=True) as c:
+        with pytest.raises(psycopg.errors.CheckViolation):
+            c.execute("INSERT INTO messages (firm_id, chat_id, role, content, approval_status) VALUES (%s,%s,'assistant','x','whatever')", (world.firm_a, chat_rows["chat-adv"]))
+        with pytest.raises(psycopg.errors.CheckViolation):  # a 'client' chat must belong to a client
+            c.execute("INSERT INTO chats (firm_id, user_id, audience) VALUES (%s,%s,'client')", (world.firm_a, world.user_a))
+
+
+async def test_matter_facts_are_firm_only(factory, database: PgConfig, world: World) -> None:  # type: ignore[no-untyped-def]
+    with psycopg.connect(database.owner_dsn(TEST_DB), autocommit=True) as c:
+        mid = c.execute("SELECT id FROM matters WHERE client_id=%s LIMIT 1", (world.a1,)).fetchone()[0]
+        c.execute("INSERT INTO matter_facts (firm_id, client_id, matter_id, key, value) VALUES (%s,%s,%s,'tenancy-fact','v')", (world.firm_a, world.a1, mid))
+    client_a1 = TenantContext(firm_id=world.firm_a, user_id=world.user_a1, role="client_user", client_id=world.a1)
+    async with tenant_session(factory, client_a1) as s:
+        assert await ids(s, "SELECT key FROM matter_facts") == set()
+    async with tenant_session(factory, firm_ctx(world, world.firm_a, world.user_a)) as s:
+        assert "tenancy-fact" in await ids(s, "SELECT key FROM matter_facts")
+    async with tenant_session(factory, firm_ctx(world, world.firm_b, world.user_b)) as s:
+        assert "tenancy-fact" not in await ids(s, "SELECT key FROM matter_facts")

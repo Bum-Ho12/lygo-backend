@@ -1,5 +1,6 @@
 from app.db.models.audit import AuditEvent
 from app.db.models.auth import RefreshToken
+from app.db.models.chat import Chat, MatterFact, Message
 from app.db.models.documents import (
     Document,
     DocumentField,
@@ -18,6 +19,7 @@ from app.db.models.work import Deadline, Invitation, Task
 
 __all__ = [
     "AuditEvent",
+    "Chat",
     "Chunk",
     "Client",
     "ClientMembership",
@@ -34,6 +36,8 @@ __all__ = [
     "IngestEvent",
     "Invitation",
     "Matter",
+    "MatterFact",
+    "Message",
     "Notification",
     "Page",
     "RefreshToken",

@@ -4,6 +4,8 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.api.deps import get_factory
+from app.engine.ai.providers.factory import get_llm
+from app.engine.ai.providers.fake import ExtractiveLLM
 from app.engine.rag.embeddings.base import HashingEmbedder
 from app.engine.rag.embeddings.factory import get_embedder
 from app.ingestion.ocr.base import get_ocr
@@ -44,12 +46,18 @@ def ocr() -> FakeOcr:
 
 
 @pytest.fixture
+def llm_box() -> dict:  # type: ignore[type-arg]
+    """Tests swap `llm_box["llm"]` to script model behaviour."""
+    return {"llm": ExtractiveLLM()}
+
+
+@pytest.fixture
 def embedder() -> HashingEmbedder:
     return HashingEmbedder()
 
 
 @pytest.fixture
-async def api(database: PgConfig, outbox, storage, ocr, embedder):  # type: ignore[no-untyped-def]
+async def api(database: PgConfig, outbox, storage, ocr, embedder, llm_box):  # type: ignore[no-untyped-def]
     engine = create_async_engine(database.app_url, poolclass=NullPool)
     factory = async_sessionmaker(engine, expire_on_commit=False)
     app.dependency_overrides[get_factory] = lambda: factory
@@ -59,6 +67,7 @@ async def api(database: PgConfig, outbox, storage, ocr, embedder):  # type: igno
     app.dependency_overrides[get_resolver] = lambda: resolver
     app.dependency_overrides[get_ocr] = lambda: ocr
     app.dependency_overrides[get_embedder] = lambda: embedder
+    app.dependency_overrides[get_llm] = lambda: llm_box["llm"]
     app.dependency_overrides[get_dispatcher] = lambda: AwaitingDispatcher(factory, resolver, ocr, embedder)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c

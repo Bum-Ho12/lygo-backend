@@ -12,5 +12,5 @@ Decisions and facts we still need. Update this file as they are resolved.
 | 6 | Which LLM(s) and embedding model? Rumpty-hosted open models vs external API | Engineering | Quality, cost, data transfer, latency |
 | 7 | Will clients outside firms (public consumers) be served? When? | Product | Advocates Act s.34 / s.33 exposure, different onboarding |
 | 8 | Pricing: per firm seat, per client, per document, usage-based AI? | Founders | Billing design |
-| 9 | Advocate review policy for client-visible AI answers — default on or off? | Product + pilot firms | Risk vs speed |
+| 9 | Advocate review policy for client-visible AI answers — default on or off? **Interim:** ON (and the client assistant is OFF until a firm enables it); both are per-firm settings. Revisit with pilot firms. | Product + pilot firms | Risk vs speed |
 | 10 | Product/brand domain (`lygo.co.ke`?) | Founders | Subdomains for firms, email-in |

@@ -43,6 +43,11 @@ GET/POST   /v1/firms/{firm_id}/api-keys
 GET/POST   /v1/firms/{firm_id}/webhooks
 ```
 
+### Implemented so far (Phase E2, AI)
+`/firms/{id}/chats` (POST/GET), `/chats/{id}` (GET), `/chats/{id}/messages` (POST; JSON or `Accept: text/event-stream`),
+`/ai-outputs` (GET pending) and `/ai-outputs/{id}:approve` (POST), `/ai-settings` (GET/PATCH), `/matters/{id}/research` (POST),
+`/matters/{id}/facts` (GET/POST/PATCH), `/documents/{id}/summary` (POST).
+
 ### Implemented so far (Phase A/B)
 `/auth/{register,login,refresh,logout}`, `/me`, `/me/memberships`, `/invitations/accept`,
 `/platform/firms` (GET/POST), `/firms/{id}` (GET/PATCH), `/members` (GET, PATCH, DELETE), `/invitations` (POST),

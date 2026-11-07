@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     ocr_langs: str = "eng+swa"
     ocr_review_threshold: float = 0.80
 
+    llm_model_chat: str = ""
+    llm_timeout_s: float = 60.0
+    ai_monthly_message_cap: int = 2000  # per firm; assistant messages
+    rag_min_similarity: float = 0.25  # abstain unless a lexical match exists or the best vector similarity reaches this
     llm_base_url: str = ""
     llm_api_key: str = ""
     embedding_model: str = ""

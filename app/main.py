@@ -5,6 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.routers import (
+    ai,
     auth,
     clients,
     documents,
@@ -63,6 +64,7 @@ app.include_router(matters.router, prefix="/v1")
 app.include_router(documents.router, prefix="/v1")
 app.include_router(notifications.router, prefix="/v1")
 app.include_router(search.router, prefix="/v1")
+app.include_router(ai.router, prefix="/v1")
 app.include_router(storage.router, prefix="/v1")
 app.include_router(platform.router, prefix="/v1")
 # Next routers (see docs/08-api-design.md): auth, me, platform, firms, members, clients,
