@@ -4,7 +4,7 @@ import structlog
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1.routers import health
+from app.api.v1.routers import auth, firms, health
 from app.core.config import settings
 from app.core.errors import install_error_handlers
 from app.core.logging import configure_logging
@@ -41,6 +41,8 @@ async def request_id_middleware(request: Request, call_next):  # type: ignore[no
 
 
 app.include_router(health.router, prefix="/v1")
+app.include_router(auth.router, prefix="/v1")
+app.include_router(firms.router, prefix="/v1")
 # Next routers (see docs/08-api-design.md): auth, me, platform, firms, members, clients,
 # matters, knowledge, client_documents, documents, flags, comparisons, fact_checks, chats,
 # research, reports, storage, notifications, integrations.

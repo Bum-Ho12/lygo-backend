@@ -17,7 +17,7 @@ comparison, insurance, advisory and general speed-up of firm work. Practice area
 | A2 | Config validation, structured logging with PII masking, problem+json, cursor pagination, request IDs, liveness/readiness | done |
 | A3 | DB layer: engines, base models, Alembic, `tenant_rls_sql` helper, migration 0001 (identity, firms, clients, matters, audit) | done (verified on Postgres 17 + pgvector) |
 | A4 | Tenant session (`tenant_session`), fixed RLS policies, isolation test suite (16 tests) | done; the request dependency that derives the context from a JWT lands with A5 |
-| A5 | Auth, MFA, RBAC, API keys ([ADR 0006](adr/0006-auth-bootstrap.md)) | todo |
+| A5 | Auth ([ADR 0006](adr/0006-auth-bootstrap.md)) | partial: register/login/refresh (rotation + reuse detection)/logout, `/me`, role-permission matrix, tenant context from token + path firm, `GET/PATCH /firms/{id}`, `GET /firms/{id}/clients`. Todo: TOTP MFA, SMS OTP, invitations, SSO, API keys, login rate limiting, restrict `users` column access |
 | A6 | Append-only audit log (privileges + trigger; `domain/audit.record`) | done |
 | B | Firms, members, clients, matters, deadlines, consents, tasks, pack installation | todo |
 | C | Storage adapters; both ingest doors; OCR/parse pipeline; structure tree, typed fields, entities, versions | partial: structure parser done (`app/ingestion/structure.py`) |

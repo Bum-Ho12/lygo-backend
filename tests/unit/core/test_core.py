@@ -33,6 +33,8 @@ def test_cursor_roundtrip_and_bad_cursor() -> None:
 def test_insecure_secret_rejected_outside_local() -> None:
     with pytest.raises(ValueError):
         Settings(app_env="production", jwt_secret="change-me")
+    with pytest.raises(ValueError):
+        Settings(app_env="staging", jwt_secret="too-short")
     assert Settings(app_env="production", jwt_secret="x" * 32).is_production
     assert Settings(app_env="local").is_local
 

@@ -20,6 +20,7 @@ class User(Base, TimestampMixin):
     password_hash: Mapped[str | None] = mapped_column(Text)
     mfa_secret_enc: Mapped[bytes | None] = mapped_column(LargeBinary)
     locale: Mapped[str] = mapped_column(String(8), default="en")
+    platform_role: Mapped[str | None] = mapped_column(String(32))  # platform_admin | platform_support
 
 
 class Firm(Base, TimestampMixin):

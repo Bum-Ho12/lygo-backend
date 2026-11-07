@@ -17,6 +17,7 @@ class Settings(BaseSettings):
 
     jwt_secret: str = "change-me"
     jwt_access_ttl_min: int = 15
+    jwt_refresh_ttl_days: int = 14
 
     llm_base_url: str = ""
     llm_api_key: str = ""
@@ -41,8 +42,8 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def reject_insecure_defaults(self) -> "Settings":
-        if not self.is_local and self.jwt_secret in _INSECURE_SECRETS:
-            raise ValueError("JWT_SECRET must be set to a strong value outside local env")
+        if not self.is_local and (self.jwt_secret in _INSECURE_SECRETS or len(self.jwt_secret) < 32):
+            raise ValueError("JWT_SECRET must be at least 32 characters outside local env")
         return self
 
 
