@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     # --- storage (default Lygo-managed destination; per-firm BYO arrives with storage policies) ---
     storage_backend: str = "local"  # local | s3
     storage_local_dir: str = "data/objects"
+    # Firm bucket endpoints on private/internal addresses are refused outside local dev (SSRF). Set true to enforce it locally too.
+    storage_block_private_endpoints: bool = False
     storage_endpoint: str = ""
     storage_region: str = "local"
     storage_bucket: str = "lygo-local"

@@ -110,8 +110,12 @@ async def deliver(
                 n = await db.get(Notification, notification_id)
                 return n.status if n else "missing"
             recipient, body = claimed
+        if not recipient or not body:
+            # A malformed row must not crash the sweep (and stop every other firm's messages): fail it and move on.
+            log.error("notification.unsendable", notification=str(notification_id), missing="recipient" if not recipient else "text")
+            await _update(factory, ctx, notification_id, status="failed", error="missing recipient or text")
+            return "failed"
         try:
-            assert recipient and body
             result = await provider.send(recipient, body, sender_id=settings.thrivewave_sender_id or None, callback_url=_callback_url(notification_id))
         except SmsTransientError as exc:
             await _update(factory, ctx, notification_id, status="queued" if attempt < MAX_ATTEMPTS else "failed", error=str(exc))

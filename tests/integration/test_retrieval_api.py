@@ -58,7 +58,8 @@ async def test_as_at_search_returns_the_version_in_force(api, act, database: PgC
     assert "thirty days" in old[0]["text"] and old[0]["citation"]["version"] == "2020-01-01"
     assert not any("sixty days" in x["text"] for x in old)  # the later version is not yet law at that date
     before_any = (await api.get("/v1/corpus/search", params={"q": "notice of claim", "as_at": "2010-01-01"}, headers=h)).json()
-    assert before_any == []
+    # (other suites may have loaded undated public text; only this Act's versions matter here)
+    assert not any(x["citation"]["title"] == "Synthetic Insurance Test Act" for x in before_any)
 
 
 async def test_open_a_citation_and_unauthenticated_access(api, act, database: PgConfig) -> None:  # type: ignore[no-untyped-def]
