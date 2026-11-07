@@ -14,6 +14,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.core.tenancy import TenantContext, tenant_session
 from app.db.models.documents import Document, DocumentSection, Flag, IngestEvent, Page
 from app.engine.packs.registry import PackNotAvailable, cached_rule_pack, list_packs
+from app.engine.rag.chunking.sections import chunk_sections
+from app.engine.rag.embeddings.base import Embedder, EmbeddingError
+from app.engine.rag.indexer import replace_chunks
 from app.engine.rules.evaluator import evaluate_pack
 from app.ingestion.classify.classifier import classify
 from app.ingestion.models import DocumentText, Section
@@ -57,7 +60,7 @@ async def _download(storage: StorageDestination, key: str, dest: Path) -> None:
 
 async def process_document(
     factory: async_sessionmaker[AsyncSession], storage: StorageDestination, ocr: OcrEngine,
-    firm_id: uuid.UUID, document_id: uuid.UUID,
+    firm_id: uuid.UUID, document_id: uuid.UUID, embedder: Embedder | None = None,
 ) -> str:
     """Run the pipeline for one document; returns the final status. Never raises for document-level problems."""
     probe_ctx = TenantContext(firm_id=firm_id, user_id=WORKER_USER, role="worker")
@@ -74,7 +77,9 @@ async def process_document(
             path = Path(tmp) / "original"
             await _download(storage, key, path)
             ex = await asyncio.to_thread(extract, kind, path, ocr)
-        return await _persist(factory, ctx, document_id, ex, scope)
+        status = await _persist(factory, ctx, document_id, ex, scope)
+        await _index(factory, ctx, document_id, embedder)
+        return status
     except Exception as exc:  # noqa: BLE001 - any failure must end in a recorded 'failed' state
         async with tenant_session(factory, ctx) as db:
             d = await db.get(Document, document_id)
@@ -132,6 +137,35 @@ async def _persist(
         doc.status = "needs_review" if low else "processed"
         doc.status_detail = f"low_confidence_pages={low}" if low else ""
         return doc.status
+
+
+async def _index(
+    factory: async_sessionmaker[AsyncSession], ctx: TenantContext, document_id: uuid.UUID, embedder: Embedder | None
+) -> None:
+    """Chunk + embed in its own transaction so an embedding outage never discards the parsed document."""
+    try:
+        async with tenant_session(factory, ctx) as db:
+            doc = await db.get(Document, document_id)
+            assert doc is not None
+            if embedder is None:
+                await _event(db, doc, "index", "skipped", "no embedding model configured")
+                return
+            rows = (await db.execute(select(DocumentSection).where(DocumentSection.document_id == doc.id).order_by(DocumentSection.ord))).scalars().all()
+            if not rows:
+                await _event(db, doc, "index", "skipped", "no text")
+                return
+            n = await replace_chunks(
+                db, embedder, chunk_sections(load_sections(list(rows)).sections), source_type="document", source_id=doc.id,
+                title=doc.title, scope=doc.scope, firm_id=doc.firm_id, client_id=doc.client_id, matter_id=doc.matter_id,
+                shared_with_clients=doc.shared_with_clients,
+            )
+            await _event(db, doc, "index", "ok", f"{n} chunk(s), model {embedder.model}")
+    except (EmbeddingError, OSError) as exc:
+        async with tenant_session(factory, ctx) as db:
+            doc = await db.get(Document, document_id)
+            if doc is not None:
+                await _event(db, doc, "index", "error", str(exc))
+                doc.status_detail = f"index_failed: {exc}"[:500]
 
 
 async def _run_rules(db: AsyncSession, doc: Document, structured: DocumentText) -> None:

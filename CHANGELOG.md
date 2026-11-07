@@ -13,5 +13,6 @@
 - Phase C: storage adapters (local, S3), both ingest endpoints, content sniffing, malware scan (clamd client), dedup and versions, pipeline (parse, OCR interface, structure, classify, rules), review queue, flag workflow, on-demand document comparison, shared-KB RLS policies.
 - Notifications: Thrivewave SMS adapter built from the provider docs, template/privacy policy, quiet hours, per-firm quota, claim-before-send with no blind retries, token-authenticated delivery reports, erase-on-terminal PII handling.
 - Fix: `cp .env.example .env` no longer crashes configuration loading (comma-separated `FRONTEND_ORIGINS`).
+- Retrieval (E1): `chunks` with pgvector + full text and RLS, statute and clause chunkers, embedder interface (hashing + OpenAI-compatible), hybrid RRF search with as-at law versions and citations, corpus loader with licence gate, pipeline indexing stage, search endpoints.
 - Python/tooling managed by uv (`.python-version`, `uv.lock`).
 - CI workflow (lint, types, security scan, unit tests, tenancy job), Makefile targets.

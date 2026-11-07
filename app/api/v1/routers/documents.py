@@ -6,7 +6,7 @@ from typing import Annotated, Any, Literal
 from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import Factory, require, tenant_db
@@ -153,6 +153,8 @@ async def patch_knowledge(doc_id: uuid.UUID, body: KnowledgePatch, db: Db, ctx: 
         changed["tags"] = _tags(",".join(changed["tags"] or []))
     for k, v in changed.items():
         setattr(d, k, v)
+    if "shared_with_clients" in changed:  # retrieval visibility follows the document
+        await db.execute(text("UPDATE chunks SET shared_with_clients = :v WHERE source_id = :s"), {"v": d.shared_with_clients, "s": d.id})
     await audit.record(db, ctx, "knowledge.update", target=f"document:{d.id}", meta={"fields": sorted(changed)})
     return _doc(d)
 

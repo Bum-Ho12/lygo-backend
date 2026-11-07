@@ -8,13 +8,16 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import insert, select
 
 from app.api.deps import Factory, UserId
-from app.core.errors import Forbidden
+from app.core.errors import Forbidden, ProblemError
 from app.core.permissions import has_permission
 from app.core.security import hash_refresh_token
 from app.core.tenancy import TenantContext, tenant_session
 from app.db.models.tenancy import Firm, User
 from app.db.models.work import Invitation
 from app.domain.firms import service
+from app.engine.rag.corpus import CorpusManifest, LicenceNotConfirmed, load_corpus_document
+from app.engine.rag.embeddings.base import Embedder
+from app.engine.rag.embeddings.factory import get_embedder
 from app.integrations.email.base import EmailMessage, EmailSender, get_email_sender
 
 router = APIRouter(prefix="/platform", tags=["platform"])
@@ -71,3 +74,24 @@ async def create_firm(
     ))
     return {"id": str(firm_id), "slug": body.slug}
 
+
+
+class CorpusLoadIn(BaseModel):
+    manifest: CorpusManifest
+    text: str = Field(min_length=20, max_length=5_000_000)
+
+
+@router.post("/corpus/documents", status_code=201)
+async def load_corpus(
+    body: CorpusLoadIn, ctx: Platform, factory: Factory, embedder: Annotated[Embedder | None, Depends(get_embedder)]
+) -> dict[str, str | int]:
+    """Load one version of a public-law source into the shared corpus (platform admins only)."""
+    if not has_permission(ctx.role, "platform.manage"):
+        raise Forbidden("Only platform admins can load the corpus.")
+    if embedder is None:
+        raise ProblemError(503, "search_unavailable", "Search unavailable", "No embedding model is configured.")
+    try:
+        doc, n = await load_corpus_document(factory, embedder, body.manifest, body.text, actor=ctx.user_id)
+    except LicenceNotConfirmed as exc:
+        raise ProblemError(422, "licence_not_confirmed", "Licence not confirmed", str(exc)) from exc
+    return {"id": str(doc.id), "manifest_id": doc.manifest_id, "chunks": n}

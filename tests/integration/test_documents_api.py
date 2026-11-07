@@ -50,7 +50,7 @@ async def test_client_upload_is_processed_classified_and_flagged(api, database: 
     assert r.json()["tags"] == ["motor", "urgent"] and r.json()["duplicate"] is False
     doc = (await api.get(f"/v1/firms/{firm}/documents/{r.json()['id']}", headers=adv)).json()
     assert doc["status"] == "processed" and doc["doc_type"] == "insurance_policy" and doc["practice_area"] == "insurance"
-    assert [e["stage"] for e in doc["events"]] == ["start", "parse", "structure", "classify", "rules"]
+    assert [e["stage"] for e in doc["events"]] == ["start", "parse", "structure", "classify", "rules", "index"]
     assert all(e["status"] == "ok" for e in doc["events"])
     flags = (await api.get(f"/v1/firms/{firm}/documents/{doc['id']}/flags", headers=adv)).json()
     by_rule = {f["rule_id"]: f for f in flags}

@@ -23,7 +23,7 @@ comparison, insurance, advisory and general speed-up of firm work. Practice area
 | C | Storage, both ingest doors, ingestion pipeline | partial (see below): storage adapters (local, S3), both upload endpoints, sniffing, malware scan, dedup, versions, OCR interface, parse, structure, classify, rules, flags, review queue, on-demand comparison endpoint. Todo: typed `document_fields`, entities, BYO destinations + policies, envelope encryption, bulk ZIP, presigned uploads, SSE progress, email-in |
 | D | Packs engine: rules + registry, `core_contract` and `insurance` draft packs | partial: rules engine, registry and 2 draft packs done; extraction/playbooks todo |
 | D2 | Deterministic comparison engine | partial: aligner, field diff and hints done; persistence, API, jobs todo |
-| E1 | RAG: chunking, embeddings, hybrid retrieval, corpus loader and versioning | todo |
+| E1 | RAG: chunking, embeddings, hybrid retrieval, corpus loader and versioning | done except real-model validation: `chunks` (pgvector HNSW + GIN full text, RLS), statute/clause chunkers, hashing + OpenAI-compatible embedders, RRF hybrid search with as-at filtering, citation objects, corpus loader (licence gate, version supersession) + platform endpoint + CLI, indexing stage in the pipeline, search endpoints. Todo: reranker, real embedding model + quality evaluation, judgment chunker, chunk-table partitioning, re-embedding migration tooling |
 | E2 | AI providers, prompts, orchestrator, guardrails, memory, chat, AI materiality layer | todo |
 | E3 | Fact-check, advisory memo, chronology (conflict check deferred) | todo |
 | F | Notifications, SMS, email, webhooks | partial: Thrivewave adapter (docs obtained, key verified without sending), template registry with privacy policy, quiet hours, quota, safe retry/claim logic, unsigned-DLR token scheme, notification audit list. Todo: OTP login flow, wiring triggers (document reviewed, deadlines), Celery beat for `send_due`, real email adapter, outbound webhooks, DPA with Thrivewave |
@@ -66,3 +66,17 @@ Pipeline stages recorded in `ingest_events`: `start -> parse -> structure -> cla
 - Knowledge-base documents shared with clients are readable but not writable by clients (separate per-command RLS policies);
   derived rows (pages, sections, flags) are never shared.
 - Audit inserts omit `RETURNING` so client users, who cannot read audit rows, can still generate audited events.
+
+## Phase E1 status (retrieval)
+**Verified:** isolation (13 DB-level and API-level checks incl. the "forgotten filter" case), as-at law versions, idempotent corpus
+reload, indexing replaced on reprocess, embedding outage leaves the parsed document intact, hybrid ranking reports both signals.
+
+**Not verified / caveats**
+- Retrieval *quality* is untested: the default embedder is a lexical hashing embedder (`hashing-v1`), not a semantic model. Run
+  the golden-set evaluation (`tests/eval`) before trusting ranking; the OpenAI-compatible client is tested against a mock only.
+- `chunks.embedding` is `vector(1024)`. A model with another dimension needs a migration and a full re-index (the indexer
+  rejects wrong-sized vectors rather than writing them).
+- The synthetic Act used in tests is fake. **No real legislation is loaded**; real sources require the NCLR licence (OPEN-QUESTIONS #5);
+  production loading is blocked unless the manifest sets `licence_confirmed: true`.
+- HNSW with RLS filtering relies on pgvector >= 0.8 iterative scans (local test DB is 0.8.x); check recall on the production
+  Postgres version before launch.

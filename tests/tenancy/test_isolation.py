@@ -351,3 +351,80 @@ async def test_dlr_token_policy_and_sweeper_are_narrow(factory, world: World, no
     platform = TenantContext(firm_id=None, user_id=world.platform_user, role="platform_admin")
     async with tenant_session(factory, platform) as s:
         assert (await s.execute(text("SELECT count(*) FROM notifications"))).scalar_one() == 0  # platform staff get no content
+
+
+# --- chunks (RAG): the most sensitive table ---------------------------------------------------------------
+@pytest.fixture(scope="session")
+def chunk_rows(database: PgConfig, world: World):  # type: ignore[no-untyped-def]
+    vec = "[" + ",".join(["0.1"] * 1024) + "]"
+    with psycopg.connect(database.owner_dsn(TEST_DB), autocommit=True) as c:
+        def add(label: str, firm: uuid.UUID | None, client: uuid.UUID | None, scope: str, shared: bool = False) -> None:
+            c.execute(
+                "INSERT INTO chunks (firm_id, client_id, scope, shared_with_clients, source_type, source_id, title, text, embedding, embed_model)"
+                " VALUES (%s,%s,%s,%s,'document',%s,%s,%s,%s::vector,'t')",
+                (firm, client, scope, shared, uuid.uuid4(), label, label, vec),
+            )
+
+        add("law", None, None, "public")
+        add("a1", world.firm_a, world.a1, "client")
+        add("a2", world.firm_a, world.a2, "client")
+        add("a_kb_private", world.firm_a, None, "firm_kb")
+        add("a_kb_shared", world.firm_a, None, "firm_kb", shared=True)
+        add("b1", world.firm_b, world.b1, "client")
+        add("b_kb", world.firm_b, None, "firm_kb", shared=True)
+
+
+CHUNK_LABELS = {"law", "a1", "a2", "a_kb_private", "a_kb_shared", "b1", "b_kb"}
+
+
+async def test_chunk_visibility_matrix(factory, world: World, chunk_rows) -> None:  # type: ignore[no-untyped-def]
+    async def titles(ctx: TenantContext) -> set[str]:
+        # other tests in the session add their own (public) corpus rows; compare only this fixture's labels
+        async with tenant_session(factory, ctx) as s:
+            return await ids(s, "SELECT title FROM chunks") & CHUNK_LABELS
+
+    assert await titles(firm_ctx(world, world.firm_a, world.user_a)) == {"law", "a1", "a2", "a_kb_private", "a_kb_shared"}
+    assert await titles(firm_ctx(world, world.firm_b, world.user_b)) == {"law", "b1", "b_kb"}
+    client_a1 = TenantContext(firm_id=world.firm_a, user_id=world.user_a1, role="client_user", client_id=world.a1)
+    assert await titles(client_a1) == {"law", "a1", "a_kb_shared"}  # own + shared KB + public law, nothing else
+    assert await titles(TenantContext(firm_id=None, user_id=world.platform_user, role="platform_admin")) == {"law"}  # staff: public only
+    async with factory() as s:  # no context at all: public law only, never tenant rows
+        assert await ids(s, "SELECT title FROM chunks") & CHUNK_LABELS == {"law"}
+
+
+async def test_chunk_writes_are_confined(factory, world: World, chunk_rows) -> None:  # type: ignore[no-untyped-def]
+    vec = "[" + ",".join(["0.1"] * 1024) + "]"
+    ins = text(
+        "INSERT INTO chunks (firm_id, client_id, scope, source_type, source_id, title, text, embedding, embed_model)"
+        " VALUES (:f, :c, :s, 'document', :src, 'x', 'x', CAST(:v AS vector), 't')"
+    )
+    p = {"src": uuid.uuid4(), "v": vec}
+    client_a1 = TenantContext(firm_id=world.firm_a, user_id=world.user_a1, role="client_user", client_id=world.a1)
+    async with tenant_session(factory, client_a1) as s:  # clients cannot edit what they can read
+        assert (await s.execute(text("UPDATE chunks SET text='pwned' WHERE title='a_kb_shared'"))).rowcount == 0
+        assert (await s.execute(text("DELETE FROM chunks WHERE title IN ('law','a_kb_shared')"))).rowcount == 0
+    for ctx, params in (
+        (firm_ctx(world, world.firm_a, world.user_a), {"f": world.firm_b, "c": None, "s": "firm_kb"}),  # another firm
+        (firm_ctx(world, world.firm_a, world.user_a), {"f": None, "c": None, "s": "public"}),  # a firm forging public law
+    ):
+        with pytest.raises(DBAPIError):
+            async with tenant_session(factory, ctx) as s:
+                await s.execute(ins, {**p, **params})
+    platform = TenantContext(firm_id=None, user_id=world.platform_user, role="platform_admin")
+    async with tenant_session(factory, platform) as s:
+        await s.execute(ins, {**p, "f": None, "c": None, "s": "public"})  # staff may load public law
+    with pytest.raises(DBAPIError):
+        async with tenant_session(factory, platform) as s:
+            await s.execute(ins, {**p, "f": world.firm_a, "c": None, "s": "firm_kb"})  # but never write tenant content
+
+
+def test_chunk_table_constraints(database: PgConfig, world: World) -> None:
+    vec = "[" + ",".join(["0.1"] * 1024) + "]"
+    with psycopg.connect(database.owner_dsn(TEST_DB), autocommit=True) as c:
+        for firm, client, scope in ((world.firm_a, None, "public"), (None, None, "firm_kb"), (world.firm_a, None, "client")):
+            with pytest.raises(psycopg.errors.CheckViolation):
+                c.execute(
+                    "INSERT INTO chunks (firm_id, client_id, scope, source_type, source_id, title, text, embedding, embed_model)"
+                    " VALUES (%s,%s,%s,'document',%s,'x','x',%s::vector,'t')",
+                    (firm, client, scope, uuid.uuid4(), vec),
+                )

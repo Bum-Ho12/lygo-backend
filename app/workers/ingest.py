@@ -9,6 +9,8 @@ from sqlalchemy.pool import NullPool
 
 from app.api.deps import Factory
 from app.core.config import settings
+from app.engine.rag.embeddings.base import Embedder
+from app.engine.rag.embeddings.factory import get_embedder
 from app.ingestion.ocr.base import OcrEngine, get_ocr
 from app.ingestion.pipeline import process_document
 from app.storage.base import StorageDestination
@@ -26,11 +28,13 @@ _TASKS: set[asyncio.Task[str]] = set()  # strong refs so fire-and-forget tasks a
 class InlineDispatcher:
     """Runs the pipeline as a background asyncio task in the API process (local/dev only)."""
 
-    def __init__(self, factory: async_sessionmaker[AsyncSession], storage: StorageDestination, ocr: OcrEngine) -> None:
-        self.factory, self.storage, self.ocr = factory, storage, ocr
+    def __init__(
+        self, factory: async_sessionmaker[AsyncSession], storage: StorageDestination, ocr: OcrEngine, embedder: Embedder | None = None
+    ) -> None:
+        self.factory, self.storage, self.ocr, self.embedder = factory, storage, ocr, embedder
 
     async def dispatch(self, firm_id: uuid.UUID, document_id: uuid.UUID) -> None:
-        t = asyncio.create_task(process_document(self.factory, self.storage, self.ocr, firm_id, document_id))
+        t = asyncio.create_task(process_document(self.factory, self.storage, self.ocr, firm_id, document_id, self.embedder))
         _TASKS.add(t)
         t.add_done_callback(_TASKS.discard)
 
@@ -47,7 +51,7 @@ def process_document_task(firm_id: str, document_id: str) -> str:
         try:
             return await process_document(
                 async_sessionmaker(engine, expire_on_commit=False), default_destination(), get_ocr(),
-                uuid.UUID(firm_id), uuid.UUID(document_id),
+                uuid.UUID(firm_id), uuid.UUID(document_id), get_embedder(),
             )
         finally:
             await engine.dispose()
@@ -56,7 +60,8 @@ def process_document_task(firm_id: str, document_id: str) -> str:
 
 
 def get_dispatcher(
-    factory: Factory, storage: Annotated[StorageDestination, Depends(get_storage)], ocr: Annotated[OcrEngine, Depends(get_ocr)]
+    factory: Factory, storage: Annotated[StorageDestination, Depends(get_storage)], ocr: Annotated[OcrEngine, Depends(get_ocr)],
+    embedder: Annotated[Embedder | None, Depends(get_embedder)],
 ) -> Dispatcher:
     """FastAPI dependency; override in tests."""
-    return CeleryDispatcher() if settings.ingest_mode == "celery" else InlineDispatcher(factory, storage, ocr)
+    return CeleryDispatcher() if settings.ingest_mode == "celery" else InlineDispatcher(factory, storage, ocr, embedder)

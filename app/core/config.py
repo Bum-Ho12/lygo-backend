@@ -41,7 +41,9 @@ class Settings(BaseSettings):
 
     llm_base_url: str = ""
     llm_api_key: str = ""
-    embedding_dim: int = 1024
+    embedding_model: str = ""
+    embedding_dim: int = 1024  # fixed in the chunks migration (vector(1024)); changing it requires a re-index migration
+    embed_batch_size: int = 64
 
     api_base_url: str = ""  # public URL of this API; used to build SMS delivery-report callbacks
     sms_max_segments: int = 3

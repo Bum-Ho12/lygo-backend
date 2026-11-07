@@ -4,6 +4,8 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.api.deps import get_factory
+from app.engine.rag.embeddings.base import HashingEmbedder
+from app.engine.rag.embeddings.factory import get_embedder
 from app.ingestion.ocr.base import get_ocr
 from app.ingestion.pipeline import process_document
 from app.integrations.email.base import InMemoryEmailSender, get_email_sender
@@ -18,11 +20,11 @@ from tests.unit.ingestion.factories import FakeOcr
 class AwaitingDispatcher:
     """Runs the pipeline to completion before the upload response returns (deterministic tests)."""
 
-    def __init__(self, factory, storage, ocr) -> None:  # type: ignore[no-untyped-def]
-        self.factory, self.storage, self.ocr = factory, storage, ocr
+    def __init__(self, factory, storage, ocr, embedder=None) -> None:  # type: ignore[no-untyped-def]
+        self.factory, self.storage, self.ocr, self.embedder = factory, storage, ocr, embedder
 
     async def dispatch(self, firm_id, document_id) -> None:  # type: ignore[no-untyped-def]
-        await process_document(self.factory, self.storage, self.ocr, firm_id, document_id)
+        await process_document(self.factory, self.storage, self.ocr, firm_id, document_id, self.embedder)
 
 
 @pytest.fixture
@@ -41,14 +43,20 @@ def ocr() -> FakeOcr:
 
 
 @pytest.fixture
-async def api(database: PgConfig, outbox, storage, ocr):  # type: ignore[no-untyped-def]
+def embedder() -> HashingEmbedder:
+    return HashingEmbedder()
+
+
+@pytest.fixture
+async def api(database: PgConfig, outbox, storage, ocr, embedder):  # type: ignore[no-untyped-def]
     engine = create_async_engine(database.app_url, poolclass=NullPool)
     factory = async_sessionmaker(engine, expire_on_commit=False)
     app.dependency_overrides[get_factory] = lambda: factory
     app.dependency_overrides[get_email_sender] = lambda: outbox
     app.dependency_overrides[get_storage] = lambda: storage
     app.dependency_overrides[get_ocr] = lambda: ocr
-    app.dependency_overrides[get_dispatcher] = lambda: AwaitingDispatcher(factory, storage, ocr)
+    app.dependency_overrides[get_embedder] = lambda: embedder
+    app.dependency_overrides[get_dispatcher] = lambda: AwaitingDispatcher(factory, storage, ocr, embedder)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
     app.dependency_overrides.clear()

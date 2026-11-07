@@ -15,6 +15,7 @@ from app.api.v1.routers import (
     members,
     notifications,
     platform,
+    search,
 )
 from app.core.config import settings
 from app.core.errors import install_error_handlers
@@ -60,6 +61,7 @@ app.include_router(clients.router, prefix="/v1")
 app.include_router(matters.router, prefix="/v1")
 app.include_router(documents.router, prefix="/v1")
 app.include_router(notifications.router, prefix="/v1")
+app.include_router(search.router, prefix="/v1")
 app.include_router(platform.router, prefix="/v1")
 # Next routers (see docs/08-api-design.md): auth, me, platform, firms, members, clients,
 # matters, knowledge, client_documents, documents, flags, comparisons, fact_checks, chats,
