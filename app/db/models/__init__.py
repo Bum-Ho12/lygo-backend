@@ -1,8 +1,18 @@
 from app.db.models.audit import AuditEvent
 from app.db.models.auth import RefreshToken
-from app.db.models.documents import Document, DocumentSection, Flag, IngestEvent, Page
+from app.db.models.documents import (
+    Document,
+    DocumentField,
+    DocumentSection,
+    Entity,
+    EntityMention,
+    Flag,
+    IngestEvent,
+    Page,
+)
 from app.db.models.notifications import Notification
 from app.db.models.rag import Chunk, CorpusDocument
+from app.db.models.storage import StorageDestination
 from app.db.models.tenancy import Client, ClientMembership, Firm, FirmMembership, Matter, User
 from app.db.models.work import Deadline, Invitation, Task
 
@@ -14,7 +24,10 @@ __all__ = [
     "CorpusDocument",
     "Deadline",
     "Document",
+    "DocumentField",
     "DocumentSection",
+    "Entity",
+    "EntityMention",
     "Firm",
     "FirmMembership",
     "Flag",
@@ -24,6 +37,7 @@ __all__ = [
     "Notification",
     "Page",
     "RefreshToken",
+    "StorageDestination",
     "Task",
     "User",
 ]

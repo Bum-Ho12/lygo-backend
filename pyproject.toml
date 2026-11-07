@@ -29,6 +29,7 @@ dependencies = [
   "pyyaml>=6.0",
   "structlog>=24.1",
   "opentelemetry-sdk>=1.26",
+  "cryptography>=50.0.2",
 ]
 
 [dependency-groups]

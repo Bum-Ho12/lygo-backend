@@ -55,9 +55,9 @@ _FILTER = """
 # SQL below is assembled only from the module-level constants above; every caller-supplied value is a bind parameter.
 _VECTOR = text(f"SELECT {_COLS} FROM chunks WHERE {_FILTER} ORDER BY embedding <=> CAST(:q AS vector) LIMIT :k")  # nosec B608
 _FULLTEXT = text(
-    f"SELECT {_COLS} FROM chunks, websearch_to_tsquery('english', :query) AS tq "
+    f"SELECT {_COLS} FROM chunks, websearch_to_tsquery('english', :query) AS tq "  # nosec B608
     f"WHERE {_FILTER} AND tsv @@ tq ORDER BY ts_rank_cd(tsv, tq) DESC, id LIMIT :k"
-)  # nosec B608
+)
 
 
 def _hit_row(r: object) -> tuple[Citation, str]:

@@ -50,5 +50,11 @@ erDiagram
 | `corpus_sources` / `corpus_documents` | id, title, kind (constitution/act/regulation/judgment), cap_no, version_date, licence, checksum | firm_id NULL |
 | `notifications` | id, user_id, firm_id, channel, template, status, provider_msg_id | |
 
+### Implemented since this document was written
+`invitations`, `deadlines`, `tasks`, `refresh_tokens`, `notifications`, `ingest_events`, `document_fields`, `entities`,
+`entity_mentions`, `storage_destinations`, `corpus_documents` (versions of public sources), and `chunks` (with `embedding vector(1024)`,
+generated `tsv`, `effective_from/to`, `shared_with_clients`). `users.platform_role` and `firms.wrapped_dek` were added.
+`document_versions` is realised as `documents.version_group_id/version_no`; `document_sections` and `flags` follow doc 05.
+
 All tenant tables: `firm_id` NOT NULL (except public corpus), RLS enabled and forced,
 `created_at`, `updated_at`, soft-delete `deleted_at` where retention rules require it.

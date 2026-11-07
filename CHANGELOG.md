@@ -14,5 +14,7 @@
 - Notifications: Thrivewave SMS adapter built from the provider docs, template/privacy policy, quiet hours, per-firm quota, claim-before-send with no blind retries, token-authenticated delivery reports, erase-on-terminal PII handling.
 - Fix: `cp .env.example .env` no longer crashes configuration loading (comma-separated `FRONTEND_ORIGINS`).
 - Retrieval (E1): `chunks` with pgvector + full text and RLS, statute and clause chunkers, embedder interface (hashing + OpenAI-compatible), hybrid RRF search with as-at law versions and citations, corpus loader with licence gate, pipeline indexing stage, search endpoints.
+- Storage (BYO): envelope-encrypted S3-compatible destinations with probes, residency/transfer-basis rules, primary destination routing, crypto-shredding.
+- Ingestion: typed fields and firm entities (no national IDs), document-level field diffs in comparisons, SSE progress endpoint.
 - Python/tooling managed by uv (`.python-version`, `uv.lock`).
 - CI workflow (lint, types, security scan, unit tests, tenancy job), Makefile targets.

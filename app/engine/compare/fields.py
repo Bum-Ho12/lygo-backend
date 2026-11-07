@@ -20,6 +20,12 @@ def _norm(kind: str, v: str) -> str:
     return v.replace(",", "") if kind == "money" else v
 
 
+def find_values(text: str) -> list[tuple[str, str, str, int, int]]:
+    """All typed values in `text` as (kind, raw, normalised, start, end), ordered by position."""
+    out = [(k, m.group(0), _norm(k, m.group(0)), m.start(), m.end()) for k, p in _PATTERNS.items() for m in p.finditer(text)]
+    return sorted(out, key=lambda t: (t[3], t[0]))
+
+
 def extract_fields(text: str) -> dict[str, Counter[str]]:
     return {k: Counter(_norm(k, m.group(0)) for m in p.finditer(text)) for k, p in _PATTERNS.items()}
 

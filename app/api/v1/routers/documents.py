@@ -1,35 +1,48 @@
+import asyncio
+import json
 import re
+import time
 import uuid
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Query, Request, Response, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import Factory, require, tenant_db
+from app.core.config import settings
 from app.core.errors import NotFound, ProblemError
 from app.core.pagination import Page, keyset_page
 from app.core.tenancy import TenantContext, tenant_session
-from app.db.models.documents import Document, DocumentSection, Flag, IngestEvent
+from app.db.models.documents import (
+    Document,
+    DocumentField,
+    DocumentSection,
+    Entity,
+    EntityMention,
+    Flag,
+    IngestEvent,
+)
 from app.db.models.documents import Page as PageRow
 from app.domain.audit import service as audit
 from app.domain.documents.service import ingest_upload
 from app.domain.matters.service import get_or_404
 from app.engine.compare.aligner import compare_documents
+from app.engine.compare.documents import FieldDiff, diff_fields
 from app.engine.compare.models import ComparisonResult
 from app.ingestion.pipeline import load_sections
 from app.ingestion.scan import Scanner, get_scanner
-from app.storage.base import ObjectNotFound, StorageDestination
-from app.storage.factory import get_storage
+from app.storage.base import ObjectNotFound, StorageError
+from app.storage.resolver import StorageResolver, get_resolver
 from app.workers.ingest import Dispatcher, get_dispatcher
 
 router = APIRouter(prefix="/firms/{firm_id}", tags=["documents"])
 Db = Annotated[AsyncSession, Depends(tenant_db)]
 Limit = Annotated[int | None, Query(ge=1, le=200)]
-Storage = Annotated[StorageDestination, Depends(get_storage)]
+Resolver = Annotated[StorageResolver, Depends(get_resolver)]
 Scan = Annotated[Scanner, Depends(get_scanner)]
 Disp = Annotated[Dispatcher, Depends(get_dispatcher)]
 DocRead = Annotated[TenantContext, Depends(require("documents.read"))]
@@ -103,6 +116,22 @@ class CompareOut(BaseModel):
     left_document_id: uuid.UUID
     right_document_id: uuid.UUID
     result: ComparisonResult
+    field_diff: list[FieldDiff] = []
+
+
+class FieldOut(BaseModel):
+    kind: str
+    key: str
+    value: str
+    section_path: str
+
+
+class EntityOut(BaseModel):
+    id: uuid.UUID
+    kind: str
+    display_name: str
+    mentions: int
+    documents: list[uuid.UUID]
 
 
 def _doc(d: Document, duplicate: bool = False) -> DocumentOut:
@@ -127,11 +156,11 @@ def _tags(raw: str | None) -> list[str]:
 # --- door 1: firm knowledge base -------------------------------------------------------------------
 @router.post("/knowledge/documents", status_code=201, response_model=DocumentOut)
 async def upload_knowledge(
-    response: Response, factory: Factory, storage: Storage, scanner: Scan, dispatcher: Disp,
+    response: Response, factory: Factory, resolver: Resolver, scanner: Scan, dispatcher: Disp,
     ctx: Annotated[TenantContext, Depends(require("knowledge.manage"))],
     file: Annotated[UploadFile, File()], title: Annotated[str | None, Form()] = None, tags: Annotated[str | None, Form()] = None,
 ) -> DocumentOut:
-    doc, dup = await ingest_upload(factory, storage, scanner, dispatcher, ctx, file, scope="firm_kb", client_id=None, title=title, tags=_tags(tags))
+    doc, dup = await ingest_upload(factory, resolver, scanner, dispatcher, ctx, file, scope="firm_kb", client_id=None, title=title, tags=_tags(tags))
     response.status_code = 200 if dup else 201
     return _doc(doc, dup)
 
@@ -162,13 +191,13 @@ async def patch_knowledge(doc_id: uuid.UUID, body: KnowledgePatch, db: Db, ctx: 
 # --- door 2: client documents ----------------------------------------------------------------------
 @router.post("/clients/{client_id}/documents", status_code=201, response_model=DocumentOut)
 async def upload_client_document(
-    client_id: uuid.UUID, response: Response, factory: Factory, storage: Storage, scanner: Scan, dispatcher: Disp,
+    client_id: uuid.UUID, response: Response, factory: Factory, resolver: Resolver, scanner: Scan, dispatcher: Disp,
     ctx: Annotated[TenantContext, Depends(require("documents.upload"))], file: Annotated[UploadFile, File()],
     title: Annotated[str | None, Form()] = None, tags: Annotated[str | None, Form()] = None,
     matter_id: Annotated[uuid.UUID | None, Form()] = None, previous_version_id: Annotated[uuid.UUID | None, Form()] = None,
 ) -> DocumentOut:
     doc, dup = await ingest_upload(
-        factory, storage, scanner, dispatcher, ctx, file, scope="client", client_id=client_id, matter_id=matter_id,
+        factory, resolver, scanner, dispatcher, ctx, file, scope="client", client_id=client_id, matter_id=matter_id,
         title=title, tags=_tags(tags), previous_version_id=previous_version_id,
     )
     response.status_code = 200 if dup else 201
@@ -192,8 +221,12 @@ async def get_document(doc_id: uuid.UUID, db: Db, ctx: DocRead) -> DocumentDetai
 
 
 @router.get("/documents/{doc_id}/content")
-async def document_content(doc_id: uuid.UUID, db: Db, storage: Storage, ctx: DocRead) -> StreamingResponse:
+async def document_content(doc_id: uuid.UUID, db: Db, resolver: Resolver, ctx: DocRead) -> StreamingResponse:
     d = await get_or_404(db, Document, doc_id, "document")
+    try:
+        storage = await resolver.for_destination(db, d.firm_id, d.storage_destination_id)
+    except StorageError as exc:
+        raise ProblemError(503, "storage_unavailable", "Storage unavailable", str(exc)) from exc
     safe = re.sub(r'[^A-Za-z0-9._ -]', "_", d.original_filename)
     stream = storage.get(d.storage_key)
     try:
@@ -210,6 +243,33 @@ async def document_content(doc_id: uuid.UUID, db: Db, storage: Storage, ctx: Doc
         body(), media_type=d.mime_type,
         headers={"Content-Disposition": f'attachment; filename="{safe}"', "X-Content-Type-Options": "nosniff", "Cache-Control": "private, no-store"},
     )
+
+
+@router.get("/documents/{doc_id}/events")
+async def document_events(doc_id: uuid.UUID, request: Request, factory: Factory, ctx: DocRead, after: int = 0) -> StreamingResponse:
+    """Server-Sent Events: the document's processing timeline, live. Resume with `?after=<last event id>` (or Last-Event-ID).
+    Ends with `event: done` once the document reaches a final status."""
+    last = max(after, int(request.headers.get("last-event-id", "0") or 0))
+    async with tenant_session(factory, ctx) as db:
+        await get_or_404(db, Document, doc_id, "document")
+
+    async def stream():  # type: ignore[no-untyped-def]
+        nonlocal last
+        deadline = time.monotonic() + settings.sse_max_seconds
+        while time.monotonic() < deadline and not await request.is_disconnected():
+            async with tenant_session(factory, ctx) as db:  # short transactions: nothing is held open while idle
+                rows = (await db.execute(select(IngestEvent).where(IngestEvent.document_id == doc_id, IngestEvent.id > last).order_by(IngestEvent.id))).scalars().all()
+                d = await db.get(Document, doc_id)
+            for e in rows:
+                last = e.id
+                yield f"id: {e.id}\nevent: stage\ndata: {json.dumps({'stage': e.stage, 'status': e.status, 'detail': e.detail, 'at': e.at.isoformat()})}\n\n"
+            if d is None or (not rows and d.status in {"processed", "needs_review", "failed"}):
+                yield f"event: done\ndata: {json.dumps({'status': d.status if d else 'missing'})}\n\n"
+                return
+            await asyncio.sleep(settings.sse_poll_seconds)
+        yield "event: timeout\ndata: {}\n\n"
+
+    return StreamingResponse(stream(), media_type="text/event-stream", headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
 
 
 @router.get("/documents/{doc_id}/flags", response_model=list[FlagOut])
@@ -258,12 +318,36 @@ async def review_queue(db: Db, ctx: Annotated[TenantContext, Depends(require("do
 # --- comparison (deterministic engine; ADR 0005). Firm-only: may span several clients' documents. ------
 @router.post("/comparisons", response_model=CompareOut)
 async def compare(body: CompareIn, db: Db, ctx: Annotated[TenantContext, Depends(require("compare.run"))]) -> CompareOut:
-    texts = []
+    texts, fields = [], []
     for doc_id in (body.left_document_id, body.right_document_id):
         d = await get_or_404(db, Document, doc_id, "document")
         rows = list((await db.execute(select(DocumentSection).where(DocumentSection.document_id == d.id).order_by(DocumentSection.ord))).scalars())
         if not rows:
             raise ProblemError(422, "not_processed", "Document not ready", f"Document {doc_id} has no extracted text yet (status: {d.status}).")
         texts.append(load_sections(rows))
+        fields.append((await db.execute(select(DocumentField.kind, DocumentField.key, DocumentField.normalized).where(DocumentField.document_id == d.id))).all())
     await audit.record(db, ctx, "comparison.run", target=f"documents:{body.left_document_id},{body.right_document_id}")
-    return CompareOut(left_document_id=body.left_document_id, right_document_id=body.right_document_id, result=compare_documents(*texts))
+    return CompareOut(
+        left_document_id=body.left_document_id, right_document_id=body.right_document_id, result=compare_documents(*texts),
+        field_diff=diff_fields([(r[0], r[1], r[2]) for r in fields[0]], [(r[0], r[1], r[2]) for r in fields[1]]),
+    )
+
+
+@router.get("/documents/{doc_id}/fields", response_model=list[FieldOut])
+async def document_fields(doc_id: uuid.UUID, db: Db, ctx: DocRead) -> list[FieldOut]:
+    await get_or_404(db, Document, doc_id, "document")
+    rows = (await db.execute(select(DocumentField).where(DocumentField.document_id == doc_id).order_by(DocumentField.kind, DocumentField.key, DocumentField.id))).scalars()
+    return [FieldOut(kind=f.kind, key=f.key, value=f.value, section_path=f.section_path) for f in rows]
+
+
+@router.get("/entities", response_model=list[EntityOut])
+async def list_entities(db: Db, ctx: Annotated[TenantContext, Depends(require("entities.read"))], q: Annotated[str | None, Query(min_length=2, max_length=100)] = None) -> list[EntityOut]:
+    """Named parties/references found in the firm's documents (firm-only; foundation for conflict checks)."""
+    stmt = select(Entity).order_by(Entity.display_name).limit(100)
+    if q:
+        stmt = stmt.where(Entity.name_norm.contains(" ".join(q.lower().split())))
+    out = []
+    for e in (await db.execute(stmt)).scalars():
+        docs = list((await db.execute(select(EntityMention.document_id).where(EntityMention.entity_id == e.id).distinct())).scalars())
+        out.append(EntityOut(id=e.id, kind=e.kind, display_name=e.display_name, mentions=len(docs), documents=docs))
+    return out

@@ -33,6 +33,7 @@ class Firm(Base, TimestampMixin):
     branding: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
     ai_settings: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
     kms_key_ref: Mapped[str | None] = mapped_column(String(200))
+    wrapped_dek: Mapped[bytes | None] = mapped_column(LargeBinary)  # per-firm data key, wrapped by the master key
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 

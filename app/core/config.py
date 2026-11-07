@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     database_migrator_url: str = "postgresql+psycopg://lygo_owner:lygo_owner@localhost:5432/lygo"
     redis_url: str = "redis://localhost:6379/0"
 
+    master_key: str = ""  # base64 32-byte key that wraps per-firm data keys; REQUIRED outside local (KMS/Vault in production)
     jwt_secret: str = "change-me"
     jwt_access_ttl_min: int = 15
     jwt_refresh_ttl_days: int = 14
@@ -31,6 +32,8 @@ class Settings(BaseSettings):
     storage_secret_key: str = ""
 
     # --- ingestion ---
+    sse_poll_seconds: float = 0.5
+    sse_max_seconds: int = 120
     max_upload_mb: int = 50
     ingest_mode: str = "inline"  # inline (in-process, local/dev) | celery
     clamd_host: str = ""  # required outside local: ingestion fails closed without a scanner

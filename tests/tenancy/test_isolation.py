@@ -428,3 +428,56 @@ def test_chunk_table_constraints(database: PgConfig, world: World) -> None:
                     " VALUES (%s,%s,%s,'document',%s,'x','x',%s::vector,'t')",
                     (firm, client, scope, uuid.uuid4(), vec),
                 )
+
+
+# --- Phase C gap tables: storage destinations, document fields, entities ----------------------------------
+@pytest.fixture(scope="session")
+def gap_rows(database: PgConfig, world: World):  # type: ignore[no-untyped-def]
+    out: dict[str, uuid.UUID] = {}
+    with psycopg.connect(database.owner_dsn(TEST_DB), autocommit=True) as c:
+        for tag, firm, client in (("a1", world.firm_a, world.a1), ("a2", world.firm_a, world.a2), ("b1", world.firm_b, world.b1)):
+            did = uuid.uuid4()
+            out[tag] = did
+            c.execute(
+                "INSERT INTO documents (id, firm_id, client_id, scope, title, original_filename, mime_type, size_bytes, sha256, storage_destination_id, storage_key)"
+                " VALUES (%s,%s,%s,'client',%s,'f','text/plain',1,%s,'t','k')", (did, firm, client, f"gap-{tag}", uuid.uuid4().hex * 2),
+            )
+            c.execute("INSERT INTO document_fields (firm_id, client_id, document_id, kind, key, value, normalized) VALUES (%s,%s,%s,'money',%s,'v','v')", (firm, client, did, f"field-{tag}"))
+            eid = c.execute(
+                "INSERT INTO entities (firm_id, kind, name_norm, display_name) VALUES (%s,'person',%s,%s) RETURNING id", (firm, f"person {tag}", f"Person {tag}")
+            ).fetchone()[0]
+            c.execute("INSERT INTO entity_mentions (firm_id, client_id, entity_id, document_id) VALUES (%s,%s,%s,%s)", (firm, client, eid, did))
+        for firm, name in ((world.firm_a, "dest-a"), (world.firm_b, "dest-b")):
+            c.execute("INSERT INTO storage_destinations (firm_id, name, region_country, credentials_enc) VALUES (%s,%s,'KE',%s)", (firm, name, b"\x01cipher"))
+    return out
+
+
+async def test_fields_follow_client_scope_while_entities_and_destinations_are_firm_only(factory, world: World, gap_rows) -> None:  # type: ignore[no-untyped-def]
+    firm_a = firm_ctx(world, world.firm_a, world.user_a)
+    client_a1 = TenantContext(firm_id=world.firm_a, user_id=world.user_a1, role="client_user", client_id=world.a1)
+    async with tenant_session(factory, firm_a) as s:
+        assert await ids(s, "SELECT key FROM document_fields WHERE key LIKE 'field-%'") == {"field-a1", "field-a2"}
+        assert await ids(s, "SELECT display_name FROM entities WHERE display_name LIKE 'Person %'") == {"Person a1", "Person a2"}
+        assert await ids(s, "SELECT name FROM storage_destinations") == {"dest-a"}
+        assert (await s.execute(text("SELECT count(*) FROM entity_mentions"))).scalar_one() >= 2
+    async with tenant_session(factory, client_a1) as s:
+        assert await ids(s, "SELECT key FROM document_fields WHERE key LIKE 'field-%'") == {"field-a1"}  # own document only
+        assert await ids(s, "SELECT id FROM entities") == set()  # entities span clients => never visible to them
+        assert await ids(s, "SELECT id FROM entity_mentions") == set()
+        assert await ids(s, "SELECT id FROM storage_destinations") == set()  # credentials never exposed to portal users
+    async with tenant_session(factory, firm_ctx(world, world.firm_b, world.user_b)) as s:
+        assert await ids(s, "SELECT name FROM storage_destinations") == {"dest-b"}
+        assert (await s.execute(text("UPDATE storage_destinations SET name='x' WHERE name='dest-a'"))).rowcount == 0
+        assert await ids(s, "SELECT display_name FROM entities WHERE display_name LIKE 'Person %'") == {"Person b1"}
+    async with factory() as s:
+        for table in ("document_fields", "entities", "entity_mentions", "storage_destinations"):
+            assert (await s.execute(text(f"SELECT count(*) FROM {table}"))).scalar_one() == 0  # no context => nothing
+
+
+def test_only_one_primary_destination_per_firm(database: PgConfig, world: World) -> None:
+    with psycopg.connect(database.owner_dsn(TEST_DB), autocommit=True) as c:
+        for n in ("p1", "p2"):
+            c.execute("INSERT INTO storage_destinations (firm_id, name, region_country, credentials_enc, is_primary) VALUES (%s,%s,'KE',%s,%s)",
+                      (world.firm_b, n, b"\x01x", n == "p1"))
+        with pytest.raises(psycopg.errors.UniqueViolation):
+            c.execute("UPDATE storage_destinations SET is_primary = true WHERE firm_id=%s AND name='p2'", (world.firm_b,))

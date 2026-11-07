@@ -112,3 +112,40 @@ class IngestEvent(Base):
     status: Mapped[str] = mapped_column(String(16))  # ok | skipped | error
     detail: Mapped[str] = mapped_column(Text, default="")
     at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class DocumentField(Base):
+    __tablename__ = "document_fields"
+    id: Mapped[uuid.UUID] = uuid_pk()
+    firm_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("firms.id", ondelete="CASCADE"), index=True)
+    client_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    document_id: Mapped[uuid.UUID] = _fk_doc()
+    kind: Mapped[str] = mapped_column(String(16))
+    key: Mapped[str] = mapped_column(String(100))
+    value: Mapped[str] = mapped_column(String(300))
+    normalized: Mapped[str] = mapped_column(String(300))
+    section_path: Mapped[str] = mapped_column(String(200), default="")
+    span_start: Mapped[int | None] = mapped_column(Integer)
+    span_end: Mapped[int | None] = mapped_column(Integer)
+
+
+class Entity(Base, TimestampMixin):
+    """Firm-wide named entity (party/reference). Firm-only: the basis for conflict checks across clients."""
+
+    __tablename__ = "entities"
+    id: Mapped[uuid.UUID] = uuid_pk()
+    firm_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("firms.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(16))  # person | org | reference
+    name_norm: Mapped[str] = mapped_column(String(200))
+    display_name: Mapped[str] = mapped_column(String(200))
+
+
+class EntityMention(Base):
+    __tablename__ = "entity_mentions"
+    id: Mapped[uuid.UUID] = uuid_pk()
+    firm_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("firms.id", ondelete="CASCADE"), index=True)
+    client_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    entity_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("entities.id", ondelete="CASCADE"), index=True)
+    document_id: Mapped[uuid.UUID] = _fk_doc()
+    role: Mapped[str] = mapped_column(String(32), default="")
+    section_path: Mapped[str] = mapped_column(String(200), default="")

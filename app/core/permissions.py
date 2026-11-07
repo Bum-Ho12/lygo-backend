@@ -4,7 +4,7 @@ Permissions are coarse capabilities checked at the router; finer checks (matter 
 domain services. Row-level isolation is enforced separately by the database.
 """
 FIRM_READ = {
-    "firm.read", "clients.read", "matters.read", "documents.read", "flags.read", "members.read", "tasks.read",
+    "firm.read", "clients.read", "matters.read", "documents.read", "flags.read", "members.read", "tasks.read", "entities.read",
 }
 FIRM_WORK = FIRM_READ | {
     "clients.manage", "matters.manage", "documents.upload", "documents.tag", "flags.manage", "tasks.manage", "knowledge.manage",

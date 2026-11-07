@@ -18,7 +18,7 @@ from app.db.models.tenancy import Client, Matter
 from app.domain.audit import service as audit
 from app.ingestion.scan import Scanner, ScannerUnavailable
 from app.ingestion.sniff import UnsupportedFile, sniff
-from app.storage.base import StorageDestination
+from app.storage.resolver import StorageResolver
 from app.workers.ingest import Dispatcher
 
 _CHUNK = 1 << 20
@@ -80,7 +80,7 @@ async def _precheck(
 
 
 async def ingest_upload(
-    factory: async_sessionmaker[AsyncSession], storage: StorageDestination, scanner: Scanner, dispatcher: Dispatcher,
+    factory: async_sessionmaker[AsyncSession], resolver: StorageResolver, scanner: Scanner, dispatcher: Dispatcher,
     ctx: TenantContext, upload: UploadFile, *, scope: str, client_id: uuid.UUID | None, matter_id: uuid.UUID | None = None,
     title: str | None = None, tags: list[str] | None = None, previous_version_id: uuid.UUID | None = None,
 ) -> tuple[Document, bool]:
@@ -106,8 +106,12 @@ async def ingest_upload(
             dup, group, version_no = await _precheck(
                 db, ctx, scope=scope, client_id=client_id, matter_id=matter_id, previous_version_id=previous_version_id, sha=sha
             )
-        if dup:
-            return dup, True
+            if dup:
+                return dup, True
+            try:
+                dest_id, storage = await resolver.primary(db, ctx.firm_id)  # the firm's chosen destination (docs/06)
+            except Exception as exc:
+                raise ProblemError(503, "storage_unavailable", "Storage unavailable", "The firm's storage destination cannot be used right now.") from exc
 
         doc_id = uuid.uuid4()
         key = f"{ctx.firm_id}/{scope}/{doc_id}/original"
@@ -117,7 +121,7 @@ async def ingest_upload(
                 doc = Document(
                     id=doc_id, firm_id=ctx.firm_id, client_id=client_id, matter_id=matter_id, scope=scope,
                     title=(title or Path(filename).stem)[:300], original_filename=filename, mime_type=sniffed.mime,
-                    size_bytes=stored.size, sha256=stored.sha256, storage_destination_id=stored.destination_id,
+                    size_bytes=stored.size, sha256=stored.sha256, storage_destination_id=dest_id,
                     storage_key=key, status="received", tags=tags or [], uploaded_by=ctx.user_id, version_no=version_no,
                     **({"version_group_id": group} if group else {}),
                 )

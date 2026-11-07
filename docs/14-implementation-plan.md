@@ -20,7 +20,7 @@ comparison, insurance, advisory and general speed-up of firm work. Practice area
 | A5 | Auth ([ADR 0006](adr/0006-auth-bootstrap.md)) | partial: register/login/refresh (rotation + reuse detection)/logout, `/me`, role-permission matrix, tenant context from token + path firm, `GET/PATCH /firms/{id}`, `GET /firms/{id}/clients`. Todo: TOTP MFA, SMS OTP, invitations, SSO, API keys, login rate limiting, restrict `users` column access |
 | A6 | Append-only audit log (privileges + trigger; `domain/audit.record`) | done |
 | B | Members and invitations, clients (+ portal invitations), matters, deadlines, tasks, platform firm bootstrap | done (migration 0003, 20 API + 3 DB-level tests). Todo: consents, `matter_facts`, pack installation, suspend/revoke portal users |
-| C | Storage, both ingest doors, ingestion pipeline | partial (see below): storage adapters (local, S3), both upload endpoints, sniffing, malware scan, dedup, versions, OCR interface, parse, structure, classify, rules, flags, review queue, on-demand comparison endpoint. Todo: typed `document_fields`, entities, BYO destinations + policies, envelope encryption, bulk ZIP, presigned uploads, SSE progress, email-in |
+| C | Storage, both ingest doors, ingestion pipeline | mostly done (see below): storage adapters (local, S3), BYO S3 destinations with envelope-encrypted credentials and residency rules, both upload endpoints, sniffing, malware scan, dedup, versions, OCR interface, parse, structure, classify, typed fields + entities, rules, flags, review queue, SSE progress, comparison endpoint with field diffs. Todo: bulk ZIP, presigned uploads, email-in, Azure/GCS/SFTP/webhook adapters, per-artefact storage policy (only "primary destination" exists), scheduled exports, field-level encryption for ID numbers |
 | D | Packs engine: rules + registry, `core_contract` and `insurance` draft packs | partial: rules engine, registry and 2 draft packs done; extraction/playbooks todo |
 | D2 | Deterministic comparison engine | partial: aligner, field diff and hints done; persistence, API, jobs todo |
 | E1 | RAG: chunking, embeddings, hybrid retrieval, corpus loader and versioning | done except real-model validation: `chunks` (pgvector HNSW + GIN full text, RLS), statute/clause chunkers, hashing + OpenAI-compatible embedders, RRF hybrid search with as-at filtering, citation objects, corpus loader (licence gate, version supersession) + platform endpoint + CLI, indexing stage in the pipeline, search endpoints. Todo: reranker, real embedding model + quality evaluation, judgment chunker, chunk-table partitioning, re-embedding migration tooling |
@@ -80,3 +80,18 @@ reload, indexing replaced on reprocess, embedding outage leaves the parsed docum
   production loading is blocked unless the manifest sets `licence_confirmed: true`.
 - HNSW with RLS filtering relies on pgvector >= 0.8 iterative scans (local test DB is 0.8.x); check recall on the production
   Postgres version before launch.
+
+## Phase C gap-closing status
+- **BYO storage:** `POST/GET /firms/{id}/storage-destinations`, `/test`, `PUT /storage-policy/primary`, `DELETE`. Owner-only. Credentials are
+  sealed with AES-256-GCM under a per-firm data key (wrapped by `MASTER_KEY`; a local dev key is derived only when `APP_ENV=local`),
+  bound to the firm via AAD, never returned or logged. A destination must pass a write/read/delete probe before it can be primary.
+  Outside Kenya a `transfer_basis` is mandatory (cross-border rules, docs/07). New uploads follow the primary; existing documents
+  stay where they are. Wiping `firms.wrapped_dek` (crypto-shredding) makes BYO data unreachable and uploads fail closed (503).
+  *Not covered:* real MinIO/RumptyCloud/AWS buckets (tested with moto), KMS/Vault key provider (only the env-key provider exists),
+  key rotation, per-artefact policies.
+- **Typed fields and entities:** amounts, periods, percentages, dates, parties and reference numbers with context labels
+  (`GET /documents/{id}/fields`), firm-wide entities (`GET /entities`, firm-only) as the seed for conflict checks, and field diffs in
+  `POST /comparisons`. National ID numbers are deliberately not extracted. Extraction is regex-based: expect misses and false
+  positives on real documents; a model fallback is planned with the AI engine.
+- **SSE progress:** `GET /documents/{id}/events` (resumable with `?after=` / `Last-Event-ID`, ends with `event: done`).
+  Implemented by polling the database (default 0.5 s), not by push; adequate for tens of concurrent viewers.

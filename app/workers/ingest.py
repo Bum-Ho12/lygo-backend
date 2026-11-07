@@ -13,8 +13,8 @@ from app.engine.rag.embeddings.base import Embedder
 from app.engine.rag.embeddings.factory import get_embedder
 from app.ingestion.ocr.base import OcrEngine, get_ocr
 from app.ingestion.pipeline import process_document
-from app.storage.base import StorageDestination
-from app.storage.factory import default_destination, get_storage
+from app.storage.factory import default_destination
+from app.storage.resolver import StorageResolver, get_resolver
 from app.workers.celery_app import celery_app
 
 
@@ -29,12 +29,12 @@ class InlineDispatcher:
     """Runs the pipeline as a background asyncio task in the API process (local/dev only)."""
 
     def __init__(
-        self, factory: async_sessionmaker[AsyncSession], storage: StorageDestination, ocr: OcrEngine, embedder: Embedder | None = None
+        self, factory: async_sessionmaker[AsyncSession], resolver: StorageResolver, ocr: OcrEngine, embedder: Embedder | None = None
     ) -> None:
-        self.factory, self.storage, self.ocr, self.embedder = factory, storage, ocr, embedder
+        self.factory, self.resolver, self.ocr, self.embedder = factory, resolver, ocr, embedder
 
     async def dispatch(self, firm_id: uuid.UUID, document_id: uuid.UUID) -> None:
-        t = asyncio.create_task(process_document(self.factory, self.storage, self.ocr, firm_id, document_id, self.embedder))
+        t = asyncio.create_task(process_document(self.factory, self.resolver, self.ocr, firm_id, document_id, self.embedder))
         _TASKS.add(t)
         t.add_done_callback(_TASKS.discard)
 
@@ -50,7 +50,7 @@ def process_document_task(firm_id: str, document_id: str) -> str:
         engine = create_async_engine(settings.database_url, poolclass=NullPool)  # fresh loop => no shared pool
         try:
             return await process_document(
-                async_sessionmaker(engine, expire_on_commit=False), default_destination(), get_ocr(),
+                async_sessionmaker(engine, expire_on_commit=False), StorageResolver(default_destination()), get_ocr(),
                 uuid.UUID(firm_id), uuid.UUID(document_id), get_embedder(),
             )
         finally:
@@ -60,8 +60,8 @@ def process_document_task(firm_id: str, document_id: str) -> str:
 
 
 def get_dispatcher(
-    factory: Factory, storage: Annotated[StorageDestination, Depends(get_storage)], ocr: Annotated[OcrEngine, Depends(get_ocr)],
+    factory: Factory, resolver: Annotated[StorageResolver, Depends(get_resolver)], ocr: Annotated[OcrEngine, Depends(get_ocr)],
     embedder: Annotated[Embedder | None, Depends(get_embedder)],
 ) -> Dispatcher:
     """FastAPI dependency; override in tests."""
-    return CeleryDispatcher() if settings.ingest_mode == "celery" else InlineDispatcher(factory, storage, ocr, embedder)
+    return CeleryDispatcher() if settings.ingest_mode == "celery" else InlineDispatcher(factory, resolver, ocr, embedder)
