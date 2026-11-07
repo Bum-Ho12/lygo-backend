@@ -7,7 +7,9 @@
 - Compliance groundwork: ODPC registration, DPA template, DPIA draft, NCLR licence request.
 
 ## Phase 1 — MVP for one practice area (weeks 5–14)
-Pick one launch area (recommended: **immigration** *or* **insurance claims**).
+Launch with practice-area packs rather than a single area: `core_contract` and `insurance` first,
+then further packs by demand (see [ADR 0004](adr/0004-practice-area-packs.md) and
+[14 — Implementation plan](14-implementation-plan.md)).
 - Both ingest endpoints, OCR, parsing, classification for that area's document types.
 - Public Law Corpus: Constitution of Kenya 2010 + core Acts for the area
   (e.g. immigration: Kenya Citizenship and Immigration Act, 2011 and its Regulations, Refugees Act, 2021;

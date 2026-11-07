@@ -15,7 +15,7 @@ and the rest is scattered across email, shared drives and personal laptops.
 
 ## Solution statement
 
-Lygo is a multi-tenant legal data platform. Each firm gets a secure workspace where:
+Lygo is a multi-tenant legal data platform for firms across practice areas. Each firm gets a secure workspace where:
 
 1. Documents enter through two endpoints — **firm knowledge** and **client documents** — from
    scanners (OCR), uploads, email or API.
@@ -43,7 +43,8 @@ In scope:
 - Firm and client document ingest (PDF, DOCX, images/scans with OCR, CSV).
 - Public Law Corpus: Constitution of Kenya 2010 plus a first set of Acts relevant to the
   launch practice area (see [Roadmap](12-roadmap.md)).
-- Rules Engine with one practice-area rule pack.
+- Rules Engine with installable practice-area packs (`core_contract` and `insurance` first; see [ADR 0004](adr/0004-practice-area-packs.md)).
+- Document comparison (versions, document vs document, vs template/playbook) and cite/claim fact-checking against the corpus and the firm's own documents (firm-side tools).
 - RAG research chat for advocates (citations required); plain-language client chatbot.
 - Document flags with explanations.
 - Basic reports (matter summary, document review report).

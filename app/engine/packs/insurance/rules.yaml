@@ -1,8 +1,4 @@
-# Example rule pack — must be reviewed by an advocate before production use.
-pack: insurance_policy
-version: 0.1.0
-practice_area: insurance
-doc_types: [insurance_policy]
+# Draft insurance rule pack. Must be reviewed by an advocate before production use.
 
 rules:
   - id: ins.exclusion.pre_existing

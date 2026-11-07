@@ -1,0 +1,37 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  lint-and-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -e ".[dev]"
+      - run: ruff check app tests
+      - run: mypy app
+      - run: bandit -q -r app -ll
+      - run: pip-audit --skip-editable
+      - run: pytest tests/unit -q
+
+  # Required check. Runs against a real Postgres with the non-owner app role (see scripts/init-db.sql).
+  tenancy:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: pgvector/pgvector:pg16
+        env: { POSTGRES_USER: lygo_owner, POSTGRES_PASSWORD: lygo_owner, POSTGRES_DB: lygo }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U lygo_owner" --health-interval 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -e ".[dev]"
+      - run: PGPASSWORD=lygo_owner psql -h localhost -U lygo_owner -d lygo -f scripts/init-db.sql
+      - run: pytest tests/tenancy -q

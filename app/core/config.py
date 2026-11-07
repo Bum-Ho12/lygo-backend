@@ -1,11 +1,14 @@
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_INSECURE_SECRETS = {"", "change-me"}
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    app_env: str = "local"
+    app_env: str = "local"  # local | staging | production
+    log_level: str = "INFO"
     frontend_origins: list[str] = ["http://localhost:3000"]
 
     database_url: str = "postgresql+asyncpg://lygo_app:lygo_app@localhost:5432/lygo"
@@ -22,10 +25,24 @@ class Settings(BaseSettings):
     thrivewave_api_key: str = ""
     thrivewave_sender_id: str = ""
 
+    @property
+    def is_local(self) -> bool:
+        return self.app_env == "local"
+
+    @property
+    def is_production(self) -> bool:
+        return self.app_env == "production"
+
     @field_validator("frontend_origins", mode="before")
     @classmethod
     def split_origins(cls, v: str | list[str]) -> list[str]:
         return [o.strip() for o in v.split(",")] if isinstance(v, str) else v
+
+    @model_validator(mode="after")
+    def reject_insecure_defaults(self) -> "Settings":
+        if not self.is_local and self.jwt_secret in _INSECURE_SECRETS:
+            raise ValueError("JWT_SECRET must be set to a strong value outside local env")
+        return self
 
 
 settings = Settings()

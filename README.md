@@ -49,7 +49,9 @@ app/
   db/              SQLAlchemy models, Alembic migrations, RLS policies
   ingestion/       OCR, parsers (PDF, DOCX, CSV, images), classification
   engine/
-    rules/         deterministic flagging & extraction engine (+ rule packs)
+    rules/         deterministic flagging engine (models, evaluator)
+    packs/         installable practice-area packs (pack.yaml, rules.yaml) + registry
+    compare/       deterministic document comparison (alignment, diff, field changes)
     ai/            LLM providers, prompts, guardrails (citation checks, advice filter)
     rag/           chunking, embeddings, hybrid retrieval, reranking
     memory/        conversation + matter memory
@@ -80,6 +82,7 @@ docs/              design documentation (start with docs/02-architecture.md)
 | 11 | [Deployment on RumptyCloud](docs/11-deployment-rumptycloud.md) | Environments, infra, residency |
 | 12 | [Roadmap](docs/12-roadmap.md) | Phased delivery plan |
 | 13 | [Testing strategy](docs/13-testing-strategy.md) | Tests, tenancy checks, AI evals |
+| 14 | [Implementation plan & status](docs/14-implementation-plan.md) | Phases, defaults, known design fixes |
 | — | [Open questions](docs/OPEN-QUESTIONS.md) | Decisions still needed |
 | — | [ADRs](docs/adr/) | Architecture decision records |
 
@@ -89,9 +92,9 @@ docs/              design documentation (start with docs/02-architecture.md)
 cp .env.example .env
 docker compose up -d db redis minio
 pip install -e ".[dev]"
-alembic upgrade head
-uvicorn app.main:app --reload
-# http://localhost:8000/docs
+make dev            # API with reload: http://localhost:8000/docs
+make test           # unit tests need no Docker
+# alembic upgrade head   (migrations arrive with Phase A3; not available yet)
 ```
 
 ## Contributing / Security

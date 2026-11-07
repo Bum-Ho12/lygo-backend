@@ -1,0 +1,13 @@
+SERVICE AGREEMENT
+
+This agreement is made between Acme Ltd and Beta Co.
+
+1. Services. Beta Co shall provide the services described in Schedule A.
+
+2. Payment. Acme Ltd shall pay KES 150,000 per month within 14 days of invoice.
+
+3. Term. This agreement renews automatically each year unless terminated.
+
+4. Termination. Either party may terminate this agreement by giving 90 days written notice.
+
+5. Confidentiality. Each party shall keep the other's information confidential.

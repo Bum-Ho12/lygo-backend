@@ -19,8 +19,8 @@ flowchart TB
 
 Deterministic, explainable, cheap. Runs on every ingested document.
 
-- **Rule packs** per document type and practice area, stored in `app/engine/rules/packs/`
-  as YAML (declarative checks) with optional Python hooks for complex logic.
+- **Rule packs** per document type and practice area, stored in `app/engine/packs/<id>/rules.yaml`
+  (see [ADR 0004](adr/0004-practice-area-packs.md)) as YAML (declarative checks) with optional Python hooks for complex logic.
 - Rule types: pattern / clause presence or absence, value thresholds (e.g. excess amount),
   date logic (expiry, limitation periods, notice windows), cross-field consistency
   (names/ID numbers match across documents), required-attachment checks.
@@ -67,6 +67,13 @@ Rule packs are reviewed by an advocate before release; each pack has fixtures in
 | `draft` | advocate | firm_kb templates, matter | Advocate-only; output is a draft for professional review |
 | `summarise` | both | matter | Matter / document summaries |
 | `report` | advocate | matter, analytics | Feeds `app/reports` |
+| `compare` | advocate | matter, firm_kb, public | Deterministic alignment ([ADR 0005](adr/0005-comparison-engine.md)); AI only explains/labels |
+| `fact_check` | advocate | public, firm_kb, matter | Cite-check and claim-check; verdicts: supported / contradicted / partially / not found, each with evidence |
+| `chronology` | advocate | matter | Dated events from documents, each linked to its source |
+| `advise_memo` | advocate | public, firm_kb, matter | Draft for advocate approval; never client-facing without approval |
+
+The orchestrator uses a task registry: each task declares scopes, audience, guardrails, prompt and
+whether approval is required, so new tasks do not require edits to a central switch.
 
 ## 3. RAG layer — `app/engine/rag`
 

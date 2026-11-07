@@ -3,8 +3,8 @@
 Endpoints, auth and DLR format are not yet confirmed (no public docs found).
 Fill in from Thrivewave's developer documentation and record details in THRIVEWAVE.md.
 """
+from collections.abc import Mapping
 from decimal import Decimal
-from typing import Mapping
 
 from app.integrations.sms.base import SmsResult
 

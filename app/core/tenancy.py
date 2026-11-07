@@ -3,9 +3,9 @@
 Every request/task runs inside a transaction that sets Postgres session variables used by RLS
 policies. Never query tenant tables outside `tenant_session`.
 """
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import AsyncIterator
 from uuid import UUID
 
 from sqlalchemy import text

@@ -1,7 +1,8 @@
 """SMS provider interface. See docs/10-notifications-sms.md."""
+from collections.abc import Mapping
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Mapping, Protocol
+from typing import Protocol
 
 
 @dataclass
