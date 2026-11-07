@@ -50,6 +50,23 @@ account doesn't exist; promotes it if it does; `--role platform_support` for vie
 automation), `list-platform-users`, `revoke-platform-role --email …`. Every grant/revoke is audited (`via: cli`).
 In a container: `docker compose exec api python -m app.cli …`. Shortcut: `make admin EMAIL=… NAME=…`.
 
+### Invitations
+- One open invitation per email per firm (or per client portal), enforced by a unique index; a second invite → 409
+  `invitation_pending` (use resend). Inviting an existing member → 409 `already_member`; an existing portal user →
+  409 `already_has_access`. An expired invitation is superseded by a new one.
+- Revoke: `DELETE /v1/firms/{id}/invitations/{inv}` (members.manage, firm or portal invitations);
+  client portal invitations also `GET|POST …/clients/{cid}/invitations[/{inv}/resend]`, `DELETE …/clients/{cid}/invitations/{inv}`
+  (clients.manage). Revoked links stop working at once; rows are kept for the audit trail.
+
+### What clients (portal users) see
+Enforced in the API, not just the UI:
+- Documents: only `processed` ones, plus their own uploads (shown as `received`). Everything else is 404 to them.
+- No processing pipeline (`events` empty, SSE 403), no `status_detail`/tags/sensitivity, no machine-extracted fields (403).
+- Flags: only those an advocate has **acknowledged**, without rule id, extracted values or the firm's note.
+- Matters: no `assigned_user_ids`. Search/assistant never draw on unfinished documents.
+- `GET /v1/firms/{id}/documents/{doc}/sections`: the text the engine read, per section (`full_text`); flag `span.start/end`
+  and field `start/end` index into it (annotated view).
+
 ### Self-service firm sign-up
 A registered user applies; a platform admin reviews; on approval the firm is created and the applicant becomes its
 `firm_owner` in one transaction (no invitation needed: the application is bound to the signed-in account).

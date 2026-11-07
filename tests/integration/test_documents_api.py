@@ -170,9 +170,12 @@ async def test_client_portal_documents_and_flags_isolated(api, database: PgConfi
     assert (await api.get(f"{base}/clients/{c2}/documents", headers=ph)).json()["items"] == []
     assert (await api.get(f"{base}/documents/{d2['id']}", headers=ph)).status_code == 404
     assert (await api.get(f"{base}/documents/{d2['id']}/content", headers=ph)).status_code == 404
-    assert len((await api.get(f"{base}/documents/{d1['id']}/flags", headers=ph)).json()) >= 2  # may see own flags
+    assert (await api.get(f"{base}/documents/{d1['id']}/flags", headers=ph)).json() == []  # unconfirmed engine findings stay in the firm
     flag = (await api.get(f"{base}/documents/{d1['id']}/flags", headers=adv)).json()[0]
     assert (await api.patch(f"{base}/flags/{flag['id']}", json={"status": "acknowledged"}, headers=ph)).status_code == 403
+    assert (await api.patch(f"{base}/flags/{flag['id']}", json={"status": "acknowledged", "note": "internal: weak point"}, headers=adv)).status_code == 200
+    seen = (await api.get(f"{base}/documents/{d1['id']}/flags", headers=ph)).json()
+    assert [f["id"] for f in seen] == [flag["id"]] and seen[0]["resolution_note"] == "" and seen[0]["rule_id"] == "" and seen[0]["extracted"] == {}
     assert (await upload_client(api, firm, c2, ph, name="n.txt", data=b"sibling upload attempt text")).status_code == 404
     own = await upload_client(api, firm, c1, ph, name="mine.txt", data=b"my own upload by the client herself")
     assert own.status_code == 201 and own.json()["client_id"] == c1

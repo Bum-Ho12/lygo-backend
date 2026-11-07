@@ -33,7 +33,7 @@ async def test_fields_are_stored_and_compared_across_documents(api, database: Pg
     a = (await upload_client(api, firm, c1, adv, name="a.txt", data=policy("Jane Wanjiru", "2,000,000", "POL/1"))).json()
     b = (await upload_client(api, firm, c2, adv, name="b.txt", data=policy("Joe Otieno", "3,000,000", "POL/2"))).json()
     fields = (await api.get(f"/v1/firms/{firm}/documents/{a['id']}/fields", headers=adv)).json()
-    assert {"kind": "money", "key": "sum insured", "value": "KES 2,000,000", "section_path": "1"} in fields
+    assert any({"kind": "money", "key": "sum insured", "value": "KES 2,000,000", "section_path": "1"}.items() <= f.items() for f in fields)
     assert any(f["kind"] == "party" and f["key"] == "insured" and f["value"] == "Jane Wanjiru" for f in fields)
     doc = (await api.get(f"/v1/firms/{firm}/documents/{a['id']}", headers=adv)).json()
     assert "extract" in [e["stage"] for e in doc["events"]]
@@ -72,9 +72,9 @@ async def test_entities_span_clients_but_stay_inside_the_firm(api, database: PgC
     assert (await api.get(f"/v1/firms/{other}/entities", headers=oadv)).json() == []
     ph = await portal(api, outbox, firm, adv, c1)
     assert (await api.get(f"/v1/firms/{firm}/entities", headers=ph)).status_code == 403
-    # but the portal user can read the fields of their own document, and not the sibling's
-    assert (await api.get(f"/v1/firms/{firm}/documents/{d1['id']}/fields", headers=ph)).status_code == 200
-    assert (await api.get(f"/v1/firms/{firm}/documents/{d2['id']}/fields", headers=ph)).status_code == 404
+    # machine-extracted fields are unreviewed engine output: firm-only, even for the client's own document
+    assert (await api.get(f"/v1/firms/{firm}/documents/{d1['id']}/fields", headers=ph)).status_code == 403
+    assert (await api.get(f"/v1/firms/{firm}/documents/{d2['id']}/fields", headers=ph)).status_code == 403
 
 
 def parse_sse(text: str) -> list[tuple[str, dict]]:  # type: ignore[type-arg]
@@ -123,8 +123,9 @@ async def test_sse_respects_isolation(api, database: PgConfig, outbox) -> None: 
     mine = (await upload_client(api, firm, c1, adv, name="m.txt", data=policy("A", "1", "P1"))).json()
     theirs = (await upload_client(api, firm, c2, adv, name="t.txt", data=policy("B", "2", "P2"))).json()
     ph = await portal(api, outbox, firm, adv, c1)
-    assert (await api.get(f"/v1/firms/{firm}/documents/{mine['id']}/events", headers=ph)).status_code == 200
-    assert (await api.get(f"/v1/firms/{firm}/documents/{theirs['id']}/events", headers=ph)).status_code == 404
+    # the processing pipeline is internal to the firm: clients get no live feed at all
+    assert (await api.get(f"/v1/firms/{firm}/documents/{mine['id']}/events", headers=ph)).status_code == 403
+    assert (await api.get(f"/v1/firms/{firm}/documents/{theirs['id']}/events", headers=ph)).status_code == 403
     other = new_firm(database)
     _, oadv, _ = await firm_member(api, database, other, "advocate")
     assert (await api.get(f"/v1/firms/{other}/documents/{mine['id']}/events", headers=oadv)).status_code == 404

@@ -54,7 +54,9 @@ _FILTER = """
     AND (CAST(:matter_id AS uuid) IS NULL OR matter_id = CAST(:matter_id AS uuid) OR scope <> 'client')
     AND (effective_from IS NULL OR effective_from <= :as_at)
     AND (effective_to IS NULL OR effective_to > :as_at)
-"""
+    AND (app_client_id() IS NULL OR scope <> 'client'
+         OR EXISTS (SELECT 1 FROM documents d WHERE d.id = chunks.source_id AND d.status = 'processed'))
+"""  # clients' search/assistant never draws on documents the firm hasn't finished (e.g. needing OCR review)
 # SQL below is assembled only from the module-level constants above; every caller-supplied value is a bind parameter.
 _VECTOR = text(f"SELECT {_VCOLS} FROM chunks WHERE {_FILTER} ORDER BY embedding <=> CAST(:q AS vector) LIMIT :k")  # nosec B608
 _FULLTEXT = text(

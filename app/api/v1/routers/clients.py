@@ -8,9 +8,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require, tenant_db
+from app.core.errors import NotFound
 from app.core.pagination import Page, keyset_page
 from app.core.tenancy import TenantContext
 from app.db.models.tenancy import Client, Firm
+from app.db.models.work import Invitation
 from app.domain.audit import service as audit
 from app.domain.firms import service as firm_service
 from app.domain.matters.service import get_or_404
@@ -99,7 +101,40 @@ async def invite_portal_user(
     r = await firm_service.create_invitation(
         db, ctx, email, to=body.email, role=body.role, client_id=client_id, firm_name=firm.name if firm else ""
     )
+    return _invite_out(r)
+
+
+def _invite_out(r: firm_service.InviteResult) -> dict[str, str | bool]:
     out: dict[str, str | bool] = {"id": str(r.invitation.id), "email": r.invitation.email, "role": r.invitation.role, "email_sent": r.emailed}
     if not r.emailed:
         out["invite_link"] = r.link  # email-less mode: the firm shares this with its client directly
     return out
+
+
+@router.get("/{client_id}/invitations")
+async def list_portal_invitations(client_id: uuid.UUID, db: Db, ctx: Manage) -> dict[str, list[dict[str, object]]]:
+    """Pending portal invitations for this client (whoever may invite may also see, resend and revoke them)."""
+    await get_or_404(db, Client, client_id, "client")
+    rows = (await db.execute(
+        select(Invitation).where(Invitation.client_id == client_id, Invitation.accepted_at.is_(None), Invitation.revoked_at.is_(None))
+        .order_by(Invitation.created_at.desc()).limit(100)
+    )).scalars()
+    now = datetime.now(UTC)
+    return {"items": [{"id": str(i.id), "email": i.email, "role": i.role, "client_id": str(client_id), "expires_at": i.expires_at.isoformat(),
+                       "expired": i.expires_at <= now} for i in rows]}
+
+
+@router.post("/{client_id}/invitations/{invitation_id}/resend")
+async def resend_portal_invitation(
+    client_id: uuid.UUID, invitation_id: uuid.UUID, db: Db, ctx: Manage, email: Annotated[EmailSender, Depends(get_email_sender)],
+) -> dict[str, str | bool]:
+    inv = await db.get(Invitation, invitation_id)
+    if inv is None or inv.client_id != client_id:
+        raise NotFound("invitation")
+    firm = await db.get(Firm, ctx.firm_id)
+    return _invite_out(await firm_service.resend_invitation(db, ctx, email, invitation_id, firm_name=firm.name if firm else ""))
+
+
+@router.delete("/{client_id}/invitations/{invitation_id}", status_code=204)
+async def revoke_portal_invitation(client_id: uuid.UUID, invitation_id: uuid.UUID, db: Db, ctx: Manage) -> None:
+    await firm_service.revoke_invitation(db, ctx, invitation_id, client_id=client_id)
