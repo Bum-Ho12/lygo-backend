@@ -50,7 +50,9 @@ def test_insecure_secret_rejected_outside_local() -> None:
         Settings(app_env="production", jwt_secret="change-me")
     with pytest.raises(ValueError):
         Settings(app_env="staging", jwt_secret="too-short")
-    assert Settings(app_env="production", jwt_secret="x" * 32).is_production
+    with pytest.raises(ValueError, match="MFA_REQUIRED_FOR_FIRM_ROLES"):
+        Settings(app_env="production", jwt_secret="x" * 32)  # production must enforce MFA for staff
+    assert Settings(app_env="production", jwt_secret="x" * 32, mfa_required_for_firm_roles=True).is_production
     assert Settings(app_env="local").is_local
 
 

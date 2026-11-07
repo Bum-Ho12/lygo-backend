@@ -18,6 +18,18 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
 
     master_key: str = ""  # base64 32-byte key that wraps per-firm data keys; REQUIRED outside local (KMS/Vault in production)
+    mfa_required_for_firm_roles: bool = False  # docs/07: TOTP MFA required for firm roles; MUST be true in production (validated)
+    trusted_proxy_hops: int = 0  # how many reverse proxies append to X-Forwarded-For; 0 = use the socket address
+    auth_lock_seconds: int = 900
+    auth_window_seconds: int = 900
+    auth_max_failures_pair: int = 5  # failures per (account, IP) before a lock
+    auth_max_failures_account: int = 20  # across all IPs (slows distributed guessing without letting one IP lock a victim out)
+    auth_max_failures_ip: int = 60
+    otp_ttl_seconds: int = 300
+    otp_max_attempts: int = 5
+    otp_sends_per_window: int = 3  # per user per 10 minutes (SMS costs money and is a fraud target)
+    otp_sends_per_ip_hour: int = 20
+    password_reset_ttl_minutes: int = 30
     jwt_secret: str = "change-me"
     jwt_access_ttl_min: int = 15
     jwt_refresh_ttl_days: int = 14
@@ -81,6 +93,12 @@ class Settings(BaseSettings):
     @classmethod
     def split_origins(cls, v: str | list[str]) -> list[str]:
         return [o.strip() for o in v.split(",")] if isinstance(v, str) else v
+
+    @model_validator(mode="after")
+    def require_mfa_in_production(self) -> "Settings":
+        if self.is_production and not self.mfa_required_for_firm_roles:
+            raise ValueError("MFA_REQUIRED_FOR_FIRM_ROLES must be true in production")
+        return self
 
     @model_validator(mode="after")
     def reject_insecure_defaults(self) -> "Settings":

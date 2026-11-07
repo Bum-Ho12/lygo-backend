@@ -5,6 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.routers import (
+    account,
     ai,
     auth,
     clients,
@@ -56,6 +57,7 @@ async def request_id_middleware(request: Request, call_next):  # type: ignore[no
 
 app.include_router(health.router, prefix="/v1")
 app.include_router(auth.router, prefix="/v1")
+app.include_router(account.router, prefix="/v1")
 app.include_router(firms.router, prefix="/v1")
 app.include_router(members.router, prefix="/v1")
 app.include_router(invitations.router, prefix="/v1")

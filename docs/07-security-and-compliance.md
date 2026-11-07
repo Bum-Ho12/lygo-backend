@@ -87,7 +87,7 @@ a draft requiring advocate review. Track the final practice directions.
 
 | Area | Control |
 |---|---|
-| Identity | Email/phone + password with Argon2id, TOTP MFA (required for firm roles), OIDC SSO (Microsoft/Google) for firms, short-lived JWT access tokens + rotating refresh tokens |
+| Identity | Email + password with Argon2id; TOTP MFA (mandatory for staff) with SMS OTP fallback ([ADR 0007](adr/0007-authentication-factors-and-email.md)); durable rate limiting and lockout; OIDC SSO (Microsoft/Google) for firms *(planned)*; short-lived JWT access tokens + rotating refresh tokens |
 | Authorisation | RBAC + matter assignment + RLS in Postgres (defence in depth) |
 | Encryption | TLS 1.2+ everywhere; AES-256 at rest; per-firm data keys (envelope encryption); field-level encryption for ID numbers |
 | Secrets | Vault/KMS; no secrets in env files in production |
@@ -103,7 +103,7 @@ a draft requiring advocate review. Track the final practice directions.
 - [ ] ODPC registration (processor + controller)
 - [ ] DPIA completed and signed off
 - [ ] DPA template for firms; sub-processor list published
-- [ ] Kenyan Standard Clauses with RumptyCloud, LLM provider, Thrivewave, email provider
+- [ ] Kenyan Standard Clauses with RumptyCloud, LLM provider, **Voyage AI (embeddings: receives document text)**, Thrivewave, email provider
 - [ ] Transfer impact assessment documented
 - [ ] Consent flow for sensitive data / cross-border processing
 - [ ] Kenya Law / NCLR content licence confirmed

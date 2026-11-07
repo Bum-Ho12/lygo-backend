@@ -9,8 +9,10 @@ Decisions and facts we still need. Update this file as they are resolved.
 | 3 | RumptyCloud SLA, backups, data retention for AI inference, DPA / Kenyan Standard Clauses | Founders + Eng | Single region in Lagos; cross-border transfer obligations |
 | 4 | Kenya-resident option: which Kenyan provider for BYO / hybrid? | Founders | Firms with strict residency needs |
 | 5 | NCLR (Kenya Law) commercial licence for laws and case law | Founders + Legal | Website content is licensed non-commercially |
-| 6 | Which LLM(s) and embedding model? Rumpty-hosted open models vs external API | Engineering | Quality, cost, data transfer, latency |
+| 6 | ~~Embedding model~~ **Decided: Voyage AI `voyage-law-2`** (needs a DPA/sub-processor entry, US transfer). **Still open: the chat LLM** (Rumpty-hosted vs external API). | Engineering | Quality, cost, data transfer, latency |
 | 7 | Will clients outside firms (public consumers) be served? When? | Product | Advocates Act s.34 / s.33 exposure, different onboarding |
 | 8 | Pricing: per firm seat, per client, per document, usage-based AI? | Founders | Billing design |
 | 9 | Advocate review policy for client-visible AI answers — default on or off? **Interim:** ON (and the client assistant is OFF until a firm enables it); both are per-firm settings. Revisit with pilot firms. | Product + pilot firms | Risk vs speed |
-| 10 | Product/brand domain (`lygo.co.ke`?) | Founders | Subdomains for firms, email-in |
+| 10 | Product/brand domain (`lygo.co.ke`?) | Founders | Subdomains for firms, email-in, **and the SPF/DKIM/DMARC-protected sender domain without which invitation/reset emails will not be delivered** |
+| 11 | Transactional email provider (SMTP relay), and its region/DPA | Engineering + Founders | Sub-processor; any provider with SMTP works |
+| 12 | Should staff be forced onto TOTP (no SMS fallback), and when do we add passkeys/SSO? | Product + Security | SIM-swap exposure for privileged users |

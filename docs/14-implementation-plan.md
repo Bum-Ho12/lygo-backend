@@ -17,7 +17,7 @@ comparison, insurance, advisory and general speed-up of firm work. Practice area
 | A2 | Config validation, structured logging with PII masking, problem+json, cursor pagination, request IDs, liveness/readiness | done |
 | A3 | DB layer: engines, base models, Alembic, `tenant_rls_sql` helper, migration 0001 (identity, firms, clients, matters, audit) | done (verified on Postgres 17 + pgvector) |
 | A4 | Tenant session (`tenant_session`), fixed RLS policies, isolation test suite (16 tests) | done; the request dependency that derives the context from a JWT lands with A5 |
-| A5 | Auth ([ADR 0006](adr/0006-auth-bootstrap.md)) | partial: register/login/refresh (rotation + reuse detection)/logout, `/me`, role-permission matrix, tenant context from token + path firm, `GET/PATCH /firms/{id}`, `GET /firms/{id}/clients`. Todo: TOTP MFA, SMS OTP, invitations, SSO, API keys, login rate limiting, restrict `users` column access |
+| A5 | Auth ([ADR 0006](adr/0006-auth-bootstrap.md), [ADR 0007](adr/0007-authentication-factors-and-email.md)) | mostly done: password login with durable rate limiting/lockout, TOTP + recovery codes, SMS OTP (phone verification + second factor), MFA enforcement for staff, password reset by email, password change, session revocation, email verification marks. Todo: SSO (OIDC), WebAuthn/passkeys, API keys, restrict `users` column access, device trust, SIM-swap signals |
 | A6 | Append-only audit log (privileges + trigger; `domain/audit.record`) | done |
 | B | Members and invitations, clients (+ portal invitations), matters, deadlines, tasks, platform firm bootstrap | done (migration 0003, 20 API + 3 DB-level tests). Todo: consents, `matter_facts`, pack installation, suspend/revoke portal users |
 | C | Storage, both ingest doors, ingestion pipeline | mostly done (see below): storage adapters (local, S3), BYO S3 destinations with envelope-encrypted credentials and residency rules, both upload endpoints, sniffing, malware scan, dedup, versions, OCR interface, parse, structure, classify, typed fields + entities, rules, flags, review queue, SSE progress, comparison endpoint with field diffs. Todo: bulk ZIP, presigned uploads, email-in, Azure/GCS/SFTP/webhook adapters, per-artefact storage policy (only "primary destination" exists), scheduled exports, field-level encryption for ID numbers |
@@ -122,3 +122,18 @@ per-firm AI settings, matter facts, rolling conversation summary, document summa
 (E1 bug); citation markers placed after the full stop were attached to the next sentence; the case-name check rejected legitimate
 cases; the advice filter wrongly stripped policy obligations ("you must pay by..."); clients could delete/alter released AI replies
 at the SQL level (now blocked by RLS).
+
+## Auth hardening + Voyage + email status
+- **Voyage:** `VoyageEmbedder` (default `voyage-law-2`: legal retrieval, exactly 1024 dims, 16K-token context) with `document`/`query` input types,
+  count+token batching, 429/5xx backoff. *Not run against the real API (no key yet).* After setting `VOYAGE_API_KEY`, re-index existing
+  chunks if any were created with another embedder (`embed_model` is stored per chunk) and re-tune `RAG_MIN_SIMILARITY`.
+  **Compliance:** document text is sent to Voyage (US): add it to the sub-processor list, sign a DPA with no-retention/no-training terms
+  (verify Voyage's terms; not assumed here), cover the cross-border transfer, and honour the sensitive-data consent rule (docs/07).
+- **Email:** SMTP adapter tested against a real SMTP server (aiosmtpd); template registry with the privacy policy; invitation delivery
+  status + resend. *Not tested against a real provider; SPF/DKIM/DMARC and a sending domain are still needed.*
+- **MFA/OTP:** see ADR 0007. Rate limiting is Postgres-backed (no Redis needed). Mutation-checked: removing TOTP replay protection,
+  MFA enforcement or the lock-before-password check each breaks tests.
+- **Known gaps:** `MFA_REQUIRED_FOR_FIRM_ROLES` defaults to false locally (required true in production); a user with no second factor
+  enrolled cannot reach firm data when enforcement is on until they enrol (they can still reach `/me/*`); account lockout is per
+  account+IP to avoid trivial victim lockout, so slow distributed guessing is bounded only by the account-wide limit; access tokens
+  stay valid up to 15 minutes after a password change/sign-out (refresh tokens are revoked immediately).

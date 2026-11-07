@@ -43,6 +43,12 @@ GET/POST   /v1/firms/{firm_id}/api-keys
 GET/POST   /v1/firms/{firm_id}/webhooks
 ```
 
+### Implemented so far (auth hardening)
+`POST /auth/login` (returns tokens, or `mfa_required` + `mfa_token`), `/auth/mfa/sms/send`, `/auth/mfa/verify` (`totp` | `sms` | `recovery`),
+`/auth/password/forgot`, `/auth/password/reset`; account security under `/me`: `/security`, `/phone`, `/phone/verify`, `/mfa/sms`,
+`/mfa/totp/{enroll,confirm,disable}`, `/mfa/recovery-codes`, `/password`. Invitations: `GET /firms/{id}/invitations`, `POST .../{id}/resend`.
+Errors: `429 too_many_attempts` (with `Retry-After`), `403 mfa_required`.
+
 ### Implemented so far (Phase E2, AI)
 `/firms/{id}/chats` (POST/GET), `/chats/{id}` (GET), `/chats/{id}/messages` (POST; JSON or `Accept: text/event-stream`),
 `/ai-outputs` (GET pending) and `/ai-outputs/{id}:approve` (POST), `/ai-settings` (GET/PATCH), `/matters/{id}/research` (POST),

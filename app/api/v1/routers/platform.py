@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import insert, select
 
-from app.api.deps import Factory, UserId
+from app.api.deps import Claims, Factory, mfa_gate
 from app.core.errors import Forbidden, ProblemError
 from app.core.permissions import has_permission
 from app.core.security import hash_refresh_token
@@ -23,11 +23,13 @@ from app.integrations.email.base import EmailSender, get_email_sender
 router = APIRouter(prefix="/platform", tags=["platform"])
 
 
-async def platform_ctx(user_id: UserId, factory: Factory) -> TenantContext:
+async def platform_ctx(claims: Claims, factory: Factory) -> TenantContext:
+    user_id = claims.user_id
     async with factory() as s:
         user = await s.get(User, user_id)
     if user is None or not user.platform_role or not has_permission(user.platform_role, "platform.read"):
         raise Forbidden("Platform access required.")
+    mfa_gate(claims)
     return TenantContext(firm_id=None, user_id=user_id, role=user.platform_role)
 
 
