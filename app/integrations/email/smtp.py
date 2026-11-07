@@ -19,6 +19,23 @@ def _clean_header(value: str) -> str:
     return value.strip()
 
 
+_SMTP_HINTS = {
+    530: "the server requires a login; set SMTP_USERNAME and SMTP_PASSWORD (or it requires STARTTLS: SMTP_SECURITY=starttls)",
+    535: "login rejected; check SMTP_USERNAME / SMTP_PASSWORD (for Brevo use the SMTP key, not the API key)",
+    534: "the provider refused this login method (Gmail: use an app password)",
+    550: "rejected; often the From address (EMAIL_FROM) is not a verified sender with the provider",
+    553: "the From address (EMAIL_FROM) is not allowed by the provider",
+    554: "message rejected by the provider",
+    421: "server busy or closing the connection; will be retried",
+    451: "temporary server error; will be retried",
+}
+
+
+def _explain(code: int) -> str:
+    """Operator-facing hint for the log. Never includes the server's free text (it can echo addresses)."""
+    return _SMTP_HINTS.get(code, "see the provider's SMTP documentation")
+
+
 def build_mime(msg: EmailMessage, from_addr: str, from_name: str) -> MimeMessage:
     to = _clean_header(msg.to)
     if not _ADDRESS.match(to):
@@ -35,6 +52,12 @@ def build_mime(msg: EmailMessage, from_addr: str, from_name: str) -> MimeMessage
     if msg.html:
         m.add_alternative(msg.html, subtype="html")
     return m
+
+
+def describe() -> str:
+    """For the startup log: where email goes and whether a login is configured (never the password)."""
+    login = "login set" if settings.smtp_username and settings.smtp_password else ("NO PASSWORD" if settings.smtp_username else "no login")
+    return f"smtp ({settings.smtp_host}:{settings.smtp_port}, {settings.smtp_security}, {login}, from={settings.email_from})"
 
 
 class SmtpEmailSender:
@@ -66,6 +89,6 @@ class SmtpEmailSender:
         except aiosmtplib.SMTPAuthenticationError as exc:
             raise EmailError("SMTP authentication failed (check SMTP_USERNAME / SMTP_PASSWORD)", transient=False) from exc
         except aiosmtplib.SMTPResponseException as exc:
-            raise EmailError(f"SMTP error {exc.code}", transient=400 <= exc.code < 500) from exc
+            raise EmailError(f"SMTP error {exc.code}: {_explain(exc.code)}", transient=400 <= exc.code < 500) from exc
         except (aiosmtplib.SMTPException, OSError, TimeoutError) as exc:
             raise EmailError(f"could not deliver: {type(exc).__name__}", transient=True) from exc

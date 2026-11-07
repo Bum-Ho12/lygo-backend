@@ -35,8 +35,19 @@ def _log_config_summary() -> None:
 
     structlog.get_logger().info(
         "config.loaded", env=settings.app_env, env_file_found=(settings.model_config["env_file"]).exists(),  # type: ignore[union-attr]
-        sms=sms_factory.describe(), llm="anthropic" if settings.anthropic_api_key else "none/local", email="smtp" if settings.smtp_host else "disabled",
+        sms=sms_factory.describe(), llm="anthropic" if settings.anthropic_api_key else "none/local", email=_email_summary(),
     )
+    remote = settings.smtp_host and settings.smtp_host not in {"localhost", "127.0.0.1", "mailpit"}
+    if remote and not (settings.smtp_username and settings.smtp_password):
+        structlog.get_logger().warning("email.login_missing", detail="SMTP_HOST is a remote server but SMTP_USERNAME/SMTP_PASSWORD are not both set: sending will fail (530).")
+
+
+def _email_summary() -> str:
+    if not settings.smtp_host:
+        return "disabled"
+    from app.integrations.email.smtp import describe
+
+    return describe()
 
 
 _log_config_summary()
