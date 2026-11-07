@@ -27,7 +27,7 @@ def _slug(tag: str) -> str:
 
 async def test_apply_review_approve_makes_the_applicant_owner(api, database: PgConfig, outbox) -> None:  # type: ignore[no-untyped-def]
     assert (await api.get("/v1/firm-signup")).json()["mode"] == "review"
-    uid, h, email = await make_user(api, "applicant")
+    _, h, email = await make_user(api, "applicant")
     slug = _slug("muthoni")
     assert (await api.get("/v1/firm-signup/slug-availability", params={"slug": slug}, headers=h)).json()["available"] is True
     r = await api.post("/v1/me/firm-applications", json=_body(slug), headers=h)

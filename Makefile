@@ -1,4 +1,4 @@
-.PHONY: setup dev test unit tenancy eval lint fix migrate db-up
+.PHONY: setup dev test unit tenancy eval lint fix migrate db-up admin
 # All commands run inside the uv-managed environment (Python pinned in .python-version).
 RUN = uv run
 
@@ -31,3 +31,7 @@ migrate:
 
 db-up:
 	docker compose up -d db redis minio
+
+# Create (or promote) a platform admin; prompts for a password. Usage: make admin EMAIL=you@example.com NAME="Your Name"
+admin:
+	$(RUN) python -m app.cli create-platform-admin --email "$(EMAIL)" --name "$(NAME)"
