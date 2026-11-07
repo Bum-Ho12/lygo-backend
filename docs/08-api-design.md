@@ -43,6 +43,13 @@ GET/POST   /v1/firms/{firm_id}/api-keys
 GET/POST   /v1/firms/{firm_id}/webhooks
 ```
 
+### Platform admins (operator CLI, not an API)
+Platform roles are granted only from a server shell, so a stolen web session can never create admins:
+`uv run python -m app.cli create-platform-admin --email ops@lygo.co.ke --name "Ops"` (prompts for a password if the
+account doesn't exist; promotes it if it does; `--role platform_support` for view-only; `--password-stdin` for
+automation), `list-platform-users`, `revoke-platform-role --email …`. Every grant/revoke is audited (`via: cli`).
+In a container: `docker compose exec api python -m app.cli …`. Shortcut: `make admin EMAIL=… NAME=…`.
+
 ### Self-service firm sign-up
 A registered user applies; a platform admin reviews; on approval the firm is created and the applicant becomes its
 `firm_owner` in one transaction (no invitation needed: the application is bound to the signed-in account).

@@ -98,6 +98,14 @@ make migrate        # alembic upgrade head (owner role, DATABASE_MIGRATOR_URL)
 make tenancy        # tenant-isolation tests (need Postgres; REQUIRE_DB=1 fails instead of skipping)
 ```
 
+**First platform admin** (needed to approve firm sign-ups; there is deliberately no API for this):
+
+```bash
+make admin EMAIL=you@example.com NAME="Your Name"     # prompts for a password; promotes the account if it exists
+uv run python -m app.cli list-platform-users
+```
+Then sign in at the web app and open **Platform → Applications**.
+
 ## Contributing / Security
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
