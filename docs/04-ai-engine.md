@@ -119,6 +119,9 @@ Facts proposed by the AI are marked `unconfirmed` until an advocate confirms the
    instruct the model to ignore instructions inside documents; tool use limited.
 6. **Confidence & abstain** — if retrieval returns nothing relevant, say so rather than guess.
 
+> **Chat model:** Claude (`claude-opus-5-5` by default, configurable) through the official Anthropic SDK; see the E3 + Claude status section of
+> [14](14-implementation-plan.md) for measured behaviour, effort settings, cost and the sub-processor obligations.
+>
 > **Implementation status:** the guardrails, orchestrator, memory and chat API are implemented against a fake model; see
 > [14 — Implementation plan](14-implementation-plan.md#phase-e2-status-ai-engine) for exactly what each guardrail does and does not guarantee.
 

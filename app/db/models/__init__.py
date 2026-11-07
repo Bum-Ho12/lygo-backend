@@ -11,6 +11,7 @@ from app.db.models.documents import (
     IngestEvent,
     Page,
 )
+from app.db.models.factcheck import FactCheck, FactCheckItem
 from app.db.models.notifications import Notification
 from app.db.models.rag import Chunk, CorpusDocument
 from app.db.models.security import MfaRecoveryCode, OtpChallenge, PasswordResetToken
@@ -31,6 +32,8 @@ __all__ = [
     "DocumentSection",
     "Entity",
     "EntityMention",
+    "FactCheck",
+    "FactCheckItem",
     "Firm",
     "FirmMembership",
     "Flag",

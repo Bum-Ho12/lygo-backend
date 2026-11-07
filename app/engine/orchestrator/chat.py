@@ -33,6 +33,7 @@ from app.engine.rag.retrieval.hybrid import Hit, search
 
 MAX_QUESTION_CHARS = 4000
 MAX_SOURCES = 6
+SOURCE_LIMIT = {"case_build": 10}  # building a case needs more material than answering a question
 MAX_SOURCE_CHARS = 2400
 Phase = Callable[[str], Awaitable[None]]
 
@@ -47,10 +48,10 @@ class TurnResult:
     citations: list[dict[str, Any]] = field(default_factory=list)
 
 
-def sources_from_hits(hits: list[Hit]) -> list[Source]:
+def sources_from_hits(hits: list[Hit], limit: int = MAX_SOURCES) -> list[Source]:
     return [
         Source(i, str(h.citation.chunk_id), h.citation.title, h.citation.section_ref, h.text[:MAX_SOURCE_CHARS])
-        for i, h in enumerate(hits[:MAX_SOURCES], start=1)
+        for i, h in enumerate(hits[:limit], start=1)
     ]
 
 
@@ -106,14 +107,14 @@ async def run_chat_turn(
         if audience == "advocate" and matter_id:
             facts = [f"{f.key}: {f.value}" for f in (await db.execute(select(MatterFact).where(MatterFact.matter_id == matter_id, MatterFact.status == "confirmed"))).scalars()]
         try:
-            hits = await search(db, embedder, question, scopes={"public", "firm_kb", "client"}, limit=MAX_SOURCES, matter_id=matter_id)
+            hits = await search(db, embedder, question, scopes={"public", "firm_kb", "client"}, limit=SOURCE_LIMIT.get(task, MAX_SOURCES), matter_id=matter_id)
         except EmbeddingError as exc:
             raise ProblemError(503, "search_unavailable", "Search unavailable", "The search service is temporarily unavailable.") from exc
         total_before = len(rows) + 1
 
     advice = check_question(question) if audience == "client" else None
     grounded = is_grounded(hits, question)
-    sources = sources_from_hits(hits) if grounded else []
+    sources = sources_from_hits(hits, SOURCE_LIMIT.get(task, MAX_SOURCES)) if grounded else []
     await phase("drafting")
     extra = (
         "The user is asking for a decision, a prediction or a document. Explain ONLY the general legal position found in the sources. "

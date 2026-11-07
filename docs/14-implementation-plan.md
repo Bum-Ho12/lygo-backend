@@ -25,7 +25,7 @@ comparison, insurance, advisory and general speed-up of firm work. Practice area
 | D2 | Deterministic comparison engine | partial: aligner, field diff and hints done; persistence, API, jobs todo |
 | E1 | RAG: chunking, embeddings, hybrid retrieval, corpus loader and versioning | done except real-model validation: `chunks` (pgvector HNSW + GIN full text, RLS), statute/clause chunkers, hashing + OpenAI-compatible embedders, RRF hybrid search with as-at filtering, citation objects, corpus loader (licence gate, version supersession) + platform endpoint + CLI, indexing stage in the pipeline, search endpoints. Todo: reranker, real embedding model + quality evaluation, judgment chunker, chunk-table partitioning, re-embedding migration tooling |
 | E2 | AI providers, prompts, orchestrator, guardrails, memory, chat | done against a fake model (see "Phase E2 status"); NOT validated with a real LLM. Todo: AI materiality labels for comparisons (E3), drafting/case-builder tasks, model-based advice classifier, entailment checking, golden-set evaluation on a real model |
-| E3 | Fact-check, advisory memo, chronology (conflict check deferred) | todo |
+| E3 | Fact-check, advisory memo, chronology (conflict check deferred) | mostly done: cite-check + claim-check, chronology, case builder (see "Phase E3 + Claude status"). Not built: drafting (Advocates Act s.34), conflict-check endpoint (entities exist), AI-proposed matter facts, persisted comparisons, AI materiality labels |
 | F | Notifications, SMS, email, webhooks | partial: Thrivewave adapter (docs obtained, key verified without sending), template registry with privacy policy, quiet hours, quota, safe retry/claim logic, unsigned-DLR token scheme, notification audit list. Todo: OTP login flow, wiring triggers (document reviewed, deadlines), Celery beat for `send_due`, real email adapter, outbound webhooks, DPA with Thrivewave |
 | G | Reports, analytics, exports, offboarding | todo |
 | H | Observability, security testing, load tests, backups, launch checklist | todo |
@@ -137,3 +137,36 @@ at the SQL level (now blocked by RLS).
   enrolled cannot reach firm data when enforcement is on until they enrol (they can still reach `/me/*`); account lockout is per
   account+IP to avoid trivial victim lockout, so slow distributed guessing is bounded only by the account-wide limit; access tokens
   stay valid up to 15 minutes after a password change/sign-out (refresh tokens are revoked immediately).
+
+## Phase E3 + Claude status
+**Claude (Anthropic SDK 2.6, `claude-opus-5-5`):** the chat LLM. Verified live: key accepted; golden set passes on the real model; adversarial probes
+(invented section, out-of-scope question, injected "admin mode" instruction in a source, advice-seeking client) all behaved safely.
+Adapter rules: no sampling params (removed on Claude 5.x), thinking left on with a >= 4096-token ceiling (thinking tokens count against `max_tokens`),
+`stop_reason: "refusal"` -> abstain, server-side `fallbacks="default"` (beta `server-side-fallback-2026-07-01`) for models that support it.
+Per-task effort: explain/summarise `low`, research `medium`, case builder `high`. Measured latency on Opus 5.5: client explanation ~4.5 s,
+research ~11 s. **Cost is not tuned**: Opus 5.5 is $4/$20 per MTok; `ANTHROPIC_MODEL=claude-sonnet-5-5` is half the price. Decide after running the
+golden set (`EVAL_REAL_MODEL=1 make eval`) on both.
+**Compliance:** matter excerpts and questions are sent to Anthropic (US). Add Anthropic to the sub-processor list, sign the DPA, confirm retention /
+no-training terms for the account type in use, and cover the cross-border transfer (docs/07). Do not assume terms for the key's account type.
+
+**What changed because of live testing:** the citation verifier removed 15 legitimate lines of a correct research note and flattened its markdown.
+It now (a) requires a marker per sentence via the prompt, (b) exempts headings, questions, "the sources do not cover..." and "check/confirm..." lines
+(they still get the invalid-marker / invented-authority checks), and (c) rebuilds the answer line by line. Real model output is kept as a regression fixture.
+
+**Fact-check** (`POST /fact-checks`): *cite-check* is deterministic (sections, Acts, cases, report citations vs the loaded sources, as-at date aware,
+ambiguity reported). *Claim-check* needs a matter: the model extracts claims (each must be traceable to the draft) and judges them against the matter's own
+documents; a verdict is kept only if a verbatim evidence quote is verified in the cited source, and claims whose figures/dates are missing from the
+quote are downgraded to `partially_supported`. Wording is deliberate: "not found" = not in the sources available to Lygo, never "fabricated".
+Results are stored firm-only (privileged work product). Limits: the public corpus is incomplete and the case-law corpus is not loaded, so most
+case citations will read `not_found`; claim-check is not entailment-proof for paraphrased evidence; synchronous (~10 s, no job queue yet).
+**Chronology** (`GET /matters/{id}/chronology`): deterministic from extracted dates + deadlines, each event linked to document/section/page.
+**Case builder** (`POST /matters/{id}/case-builder`): issues / facts / law / arguments for and against / evidence gaps, same verified-citation pipeline,
+confirmed matter facts included, advocate-only, kept as an advocate chat, always a draft.
+
+## Email-less mode (decision: email verification disabled for now)
+There was no registration-time email gate; the only artefact (`email_verified_at`) was removed (migration 0011). With no `SMTP_HOST` (or in local dev):
+invitation responses carry `invite_link` (only to the authorised inviter) and `email_sent=false`; forgot-password sends nothing and creates nothing;
+a platform admin issues audited, single-use reset links (`POST /platform/users/reset-link`) after verifying the person out of band; security alerts are skipped.
+**Trade-off to accept:** an invitation link now travels through whatever channel the inviter uses, and anyone holding it who also controls an account
+registered with the invited address can accept it; self-service password recovery does not exist. Both are bounded by: tokens are single use and expire
+in 7 days / 30 minutes, the address must match the accepting account, MFA is never bypassed, and resets are operator-mediated. Re-enable email by setting `SMTP_HOST`.

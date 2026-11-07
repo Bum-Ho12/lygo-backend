@@ -6,7 +6,7 @@ from app.engine.ai.guardrails.injection import neutralise
 from app.engine.ai.providers.base import ChatMessage
 from app.engine.ai.settings import AiSettings
 
-VERSIONS = {"explain": "explain-v1", "research": "research-v1", "summarise": "summarise-v1"}
+VERSIONS = {"explain": "explain-v1", "research": "research-v1", "summarise": "summarise-v1", "case_build": "case_build-v1"}
 
 _RULES = """You are Lygo's legal research assistant for Kenyan law firms and their clients. You are not a lawyer.
 RULES (these always win):
@@ -39,6 +39,12 @@ _TASK = {
     "explain": "TASK: explain what the sources say in answer to the question.",
     "research": "TASK: research the question and set out the authorities in the sources that bear on it.",
     "summarise": "TASK: summarise the document in the SOURCES: parties, purpose, key obligations, amounts, dates and deadlines.",
+    "case_build": (
+        "TASK: build a case outline for the advocate's stated objective from the matter documents, firm knowledge and law in the SOURCES. "
+        "Use these headings: Issues; Facts (from documents or CONFIRMED MATTER FACTS only); Law (only authorities in the SOURCES); "
+        "Arguments for; Arguments against / weaknesses; Evidence gaps and what to obtain. State uncertainty plainly. "
+        "This is a draft for the advocate to review, never advice to the client."
+    ),
 }
 
 
