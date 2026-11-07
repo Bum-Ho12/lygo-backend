@@ -1,8 +1,10 @@
 """Members and invitations."""
+import re
 import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 
+import structlog
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,7 +16,7 @@ from app.core.tenancy import TenantContext
 from app.db.models.tenancy import Client, ClientMembership, Firm, FirmMembership, User
 from app.db.models.work import Invitation
 from app.domain.audit import service as audit
-from app.integrations.email.base import EmailMessage, EmailSender
+from app.integrations.email.base import EmailError, EmailSender
 
 INVITE_TTL = timedelta(days=7)
 
@@ -104,7 +106,7 @@ async def remove_member(db: AsyncSession, ctx: TenantContext, user_id: uuid.UUID
 async def create_invitation(
     db: AsyncSession, ctx: TenantContext, email: EmailSender, *, to: str, role: str, client_id: uuid.UUID | None = None,
     firm_name: str = "",
-) -> Invitation:
+) -> tuple[Invitation, bool]:
     assert ctx.firm_id
     to = to.strip().lower()
     if client_id is None:
@@ -122,13 +124,34 @@ async def create_invitation(
     db.add(inv)
     await db.flush()
     await audit.record(db, ctx, "invitation.create", target=f"invitation:{inv.id}", meta={"role": role, "client_id": str(client_id) if client_id else None})
-    await email.send(
-        EmailMessage(
-            to=to, subject=f"You have been invited to {firm_name or 'Lygo'}",
-            body=f"Accept your invitation with this code (valid 7 days): {token}",
-        )
-    )
-    return inv
+    sent = await send_invitation_email(email, to, firm_name, token)
+    return inv, sent
+
+
+async def send_invitation_email(email: EmailSender, to: str, firm_name: str, token: str) -> bool:
+    """Returns False (and logs) if delivery failed; the invitation stays valid and can be re-sent."""
+    from app.integrations.email.templates import EmailTemplateError, link
+    from app.integrations.email.templates import render as render_email
+
+    safe_firm = re.sub(r"[^A-Za-z0-9 &.,'\-]", "", firm_name)[:60].strip() or "a law firm"
+    try:
+        await email.send(render_email("invitation", to, {"firm": safe_firm, "link": link("accept-invite", token=token)}))
+        return True
+    except (EmailError, EmailTemplateError) as exc:
+        structlog.get_logger().warning("invitation.email_failed", reason=str(exc)[:200])
+        return False
+
+
+async def resend_invitation(db: AsyncSession, ctx: TenantContext, email: EmailSender, invitation_id: uuid.UUID, *, firm_name: str) -> tuple[Invitation, bool]:
+    """Tokens are stored hashed, so resending issues a fresh token (the old link stops working)."""
+    inv = await db.get(Invitation, invitation_id)
+    if inv is None or inv.accepted_at is not None:
+        raise NotFound("invitation")
+    token = secrets.token_urlsafe(32)
+    inv.token_hash, inv.expires_at = hash_refresh_token(token), datetime.now(UTC) + INVITE_TTL
+    await audit.record(db, ctx, "invitation.resend", target=f"invitation:{inv.id}")
+    sent = await send_invitation_email(email, inv.email, firm_name, token)
+    return inv, sent
 
 
 async def accept_invitation(db: AsyncSession, user: User, token: str) -> dict[str, str | None]:

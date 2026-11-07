@@ -36,6 +36,12 @@ What the provider's API shapes about our design (it differs from the original pl
 - Delivery runs inline or on the `sms` Celery queue; messages held by quiet hours are released by `send_due` (run it from
   Celery beat, not yet scheduled).
 
+## OTP (login and phone verification)
+Implemented in `app/domain/users/otp.py`: 6-digit codes from a CSPRNG, stored only as a keyed hash, 5-minute TTL, 5 attempts per code, single
+use, a new code invalidates older ones. Codes go **only** to a number the user has verified (or is verifying), never to a number supplied
+at login. Sends are limited to 3 per user per 10 minutes and 20 per IP per hour (SMS-pumping and cost protection). SMS is a fallback
+factor, not the primary one for staff: see [ADR 0007](adr/0007-authentication-factors-and-email.md).
+
 ## Content rules (privacy)
 
 SMS is not a secure channel. Messages must **never** contain case details, document contents,

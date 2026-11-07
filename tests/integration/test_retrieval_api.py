@@ -217,3 +217,11 @@ async def test_search_requires_a_configured_model(api, database: PgConfig) -> No
     app.dependency_overrides[get_embedder] = lambda: None
     r = await api.post(f"/v1/firms/{firm}/search", json={"query": "claim"}, headers=adv)
     assert r.status_code == 503 and r.json()["code"] == "search_unavailable"
+
+
+async def test_natural_language_questions_reach_the_full_text_index(api, database: PgConfig, act) -> None:  # type: ignore[no-untyped-def]
+    """Regression: with AND semantics a full question never matched, so only the vector leg ever contributed."""
+    firm, adv, _ = await setup_firm(api, database)
+    hits = await fsearch(api, firm, adv, "When must a claimant give notice of a claim to the insurer within days of the loss?", scopes=["public"])
+    top = hits[0]
+    assert top["citation"]["section_ref"] == "s.5" and top["text_rank"] == 1 and top["vector_rank"] is not None

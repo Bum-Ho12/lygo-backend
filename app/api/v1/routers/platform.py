@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import insert, select
 
-from app.api.deps import Factory, UserId
+from app.api.deps import Claims, Factory, mfa_gate
 from app.core.errors import Forbidden, ProblemError
 from app.core.permissions import has_permission
 from app.core.security import hash_refresh_token
@@ -18,16 +18,18 @@ from app.domain.firms import service
 from app.engine.rag.corpus import CorpusManifest, LicenceNotConfirmed, load_corpus_document
 from app.engine.rag.embeddings.base import Embedder
 from app.engine.rag.embeddings.factory import get_embedder
-from app.integrations.email.base import EmailMessage, EmailSender, get_email_sender
+from app.integrations.email.base import EmailSender, get_email_sender
 
 router = APIRouter(prefix="/platform", tags=["platform"])
 
 
-async def platform_ctx(user_id: UserId, factory: Factory) -> TenantContext:
+async def platform_ctx(claims: Claims, factory: Factory) -> TenantContext:
+    user_id = claims.user_id
     async with factory() as s:
         user = await s.get(User, user_id)
     if user is None or not user.platform_role or not has_permission(user.platform_role, "platform.read"):
         raise Forbidden("Platform access required.")
+    mfa_gate(claims)
     return TenantContext(firm_id=None, user_id=user_id, role=user.platform_role)
 
 
@@ -50,7 +52,7 @@ async def list_firms(ctx: Platform, factory: Factory) -> dict[str, list[dict[str
 @router.post("/firms", status_code=201)
 async def create_firm(
     body: FirmCreate, ctx: Platform, factory: Factory, email: Annotated[EmailSender, Depends(get_email_sender)]
-) -> dict[str, str]:
+) -> dict[str, str | bool]:
     """Create a firm and invite its first owner. Platform staff get no access to firm content."""
     if not has_permission(ctx.role, "platform.manage"):
         raise Forbidden("Only platform admins can create firms.")
@@ -68,11 +70,8 @@ async def create_firm(
             )
         )
         firm_id = firm.id
-    await email.send(EmailMessage(
-        to=str(body.owner_email), subject=f"Your Lygo firm '{body.name}' is ready",
-        body=f"Accept your owner invitation with this code (valid 7 days): {token}",
-    ))
-    return {"id": str(firm_id), "slug": body.slug}
+    sent = await service.send_invitation_email(email, str(body.owner_email), body.name, token)
+    return {"id": str(firm_id), "slug": body.slug, "owner_invitation_emailed": sent}
 
 
 

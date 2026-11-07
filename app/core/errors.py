@@ -11,10 +11,11 @@ PROBLEM_JSON = "application/problem+json"
 
 class ProblemError(Exception):
     def __init__(
-        self, status: int, code: str, title: str, detail: str = "", extra: dict[str, Any] | None = None
+        self, status: int, code: str, title: str, detail: str = "", extra: dict[str, Any] | None = None, headers: dict[str, str] | None = None
     ) -> None:
         super().__init__(title)
         self.status, self.code, self.title, self.detail, self.extra = status, code, title, detail, extra or {}
+        self.headers = headers or {}
 
 
 class NotFound(ProblemError):
@@ -43,7 +44,9 @@ def _problem(request: Request, status: int, code: str, title: str, detail: str, 
 def install_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(ProblemError)
     async def _problem_error(request: Request, exc: ProblemError) -> JSONResponse:
-        return _problem(request, exc.status, exc.code, exc.title, exc.detail, **exc.extra)
+        resp = _problem(request, exc.status, exc.code, exc.title, exc.detail, **exc.extra)
+        resp.headers.update(exc.headers)
+        return resp
 
     @app.exception_handler(RequestValidationError)
     async def _validation(request: Request, exc: RequestValidationError) -> JSONResponse:

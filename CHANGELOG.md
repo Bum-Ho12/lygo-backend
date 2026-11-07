@@ -16,5 +16,10 @@
 - Retrieval (E1): `chunks` with pgvector + full text and RLS, statute and clause chunkers, embedder interface (hashing + OpenAI-compatible), hybrid RRF search with as-at law versions and citations, corpus loader with licence gate, pipeline indexing stage, search endpoints.
 - Storage (BYO): envelope-encrypted S3-compatible destinations with probes, residency/transfer-basis rules, primary destination routing, crypto-shredding.
 - Ingestion: typed fields and firm entities (no national IDs), document-level field diffs in comparisons, SSE progress endpoint.
+- AI engine (E2): LLM provider interface (OpenAI-compatible + deterministic fakes), versioned prompts, orchestrator with verify/retry/abstain, guardrails (citation verification, grounding, advice boundary, prompt-injection neutralisation), per-firm approval mode enforced by RLS, chat API (JSON + SSE), matter facts and rolling memory, document summaries, golden-set evaluation harness.
+- Fix: full-text search now matches natural-language questions (OR semantics); grounding judged by keyword coverage.
+- Embeddings: Voyage AI (`voyage-law-2`) with document/query input types, batching and backoff; embedder interface gains `embed_query`.
+- Email: SMTP adapter, privacy-enforcing templates, invitation delivery status + resend, password reset and security-alert emails.
+- Auth hardening (ADR 0007): durable rate limiting/lockout, SMS OTP (phone verification + second factor), TOTP with replay protection and recovery codes, MFA enforcement for staff, password change/reset that cannot bypass MFA, session revocation.
 - Python/tooling managed by uv (`.python-version`, `uv.lock`).
 - CI workflow (lint, types, security scan, unit tests, tenancy job), Makefile targets.

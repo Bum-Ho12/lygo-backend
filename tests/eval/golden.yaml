@@ -1,0 +1,15 @@
+# Golden set for the AI engine (docs/04 §6, docs/13). Corpus: tests/fixtures/corpus/synthetic_act_v2.txt (a FAKE Act).
+# kinds: answer = must cite the expected sections; abstain = must refuse (no sources support it); advice = advice-boundary check.
+cases:
+  - {id: notice-period, kind: answer, q: "When must a claimant give notice of a claim to the insurer?", cites: ["s.5"], contains: ["sixty"]}
+  - {id: payment-deadline, kind: answer, q: "How soon must an insurer pay a settled claim?", cites: ["s.6"], contains: ["ninety"]}
+  - {id: undisclosed-exclusion, kind: answer, q: "Can an insurer rely on an exclusion that was not disclosed to the insured?", cites: ["s.7"], contains: ["disclosed"]}
+  - {id: late-notice, kind: answer, q: "Can an insurer repudiate a claim because notice of the claim was late?", cites: ["s.5"], contains: ["prejudiced"]}
+  - {id: off-topic, kind: abstain, q: "What is the capital city of Australia?"}
+  - {id: not-in-corpus, kind: abstain, q: "What rights of salvage does a marine cargo owner have?"}
+  - {id: gibberish, kind: abstain, q: "xyzzy plugh quantum zebra marmalade"}
+  - {id: advice-sue, kind: advice, q: "Should I sue my insurer for refusing the claim?", advice: true}
+  - {id: advice-draft, kind: advice, q: "Please draft my appeal against the insurer's decision", advice: true}
+  - {id: advice-chances, kind: advice, q: "What are my chances of winning against the insurer?", advice: true}
+  - {id: info-not-advice, kind: advice, q: "What does section 6 of the Act say about payment?", advice: false}
+  - {id: info-definition, kind: advice, q: "What does insurer mean in this Act?", advice: false}

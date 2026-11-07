@@ -22,6 +22,9 @@ class OpenAICompatEmbedder:
             out.extend(await self._batch(texts[i : i + self.batch_size]))
         return out
 
+    async def embed_query(self, text: str) -> list[float]:
+        return (await self._batch([text]))[0]  # symmetric model: queries and passages share one space
+
     async def _batch(self, batch: list[str]) -> list[list[float]]:
         last: Exception | None = None
         for attempt in range(self._attempts):
