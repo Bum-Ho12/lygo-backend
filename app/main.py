@@ -19,6 +19,7 @@ from app.api.v1.routers import (
     notifications,
     platform,
     search,
+    signup,
     storage,
 )
 from app.core.config import settings
@@ -84,6 +85,7 @@ app.include_router(ai.router, prefix="/v1")
 app.include_router(intelligence.router, prefix="/v1")
 app.include_router(storage.router, prefix="/v1")
 app.include_router(platform.router, prefix="/v1")
+app.include_router(signup.router, prefix="/v1")
 # Next routers (see docs/08-api-design.md): auth, me, platform, firms, members, clients,
 # matters, knowledge, client_documents, documents, flags, comparisons, fact_checks, chats,
 # research, reports, storage, notifications, integrations.

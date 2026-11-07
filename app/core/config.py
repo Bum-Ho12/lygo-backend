@@ -73,6 +73,8 @@ class Settings(BaseSettings):
     embedding_dim: int = 1024  # fixed in the chunks migration (vector(1024)); changing it requires a re-index migration
     embed_batch_size: int = 64
 
+    firm_signup_mode: str = "review"  # review (Lygo approves each firm) | auto (instant, dev/pilot) | closed
+    terms_version: str = "2026-11-draft"  # version of the terms + DPA an applicant accepts (docs/16)
     frontend_base_url: str = "http://localhost:3000"  # where emailed links point (accept-invite, reset-password)
     smtp_host: str = ""  # empty => no outbound email (console logger in local, fail closed elsewhere)
     smtp_port: int = 587
